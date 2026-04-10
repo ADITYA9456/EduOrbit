@@ -3,6 +3,16 @@
    Dark mode by default, CSS variables for theming
    ============================================================ */
 
+/* ------------------------------------------------------------
+   Tailwind CSS (utilities)
+   - Used for new pages/components that prefer utility styling
+   - Preflight is disabled in tailwind.config.js to avoid
+     clashing with this project's existing CSS reset/design system
+   ------------------------------------------------------------ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ---- RESET ---- */
 *, *::before, *::after {
   margin: 0;

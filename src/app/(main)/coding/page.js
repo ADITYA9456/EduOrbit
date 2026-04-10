@@ -34,6 +34,7 @@ export default function CodingPracticePage() {
 
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [difficulty, setDifficulty] = useState('All');
@@ -45,6 +46,7 @@ export default function CodingPracticePage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setError('');
 
     // Fetch all problems — use select('*') for schema flexibility
     let q = supabase
@@ -58,8 +60,13 @@ export default function CodingPracticePage() {
     if (search.trim()) q = q.ilike('title', `%${search.trim()}%`);
 
     const { data: probs, error: probsError } = await q;
-    if (probsError) console.warn('Error loading problems:', probsError.message);
-    setProblems(probs || []);
+    if (probsError) {
+      console.warn('Error loading problems:', probsError.message);
+      setProblems([]);
+      setError(probsError.message || 'Failed to load coding problems.');
+    } else {
+      setProblems(probs || []);
+    }
 
     // Fetch user data (gracefully handle missing tables)
     if (user) {
@@ -295,7 +302,11 @@ export default function CodingPracticePage() {
         <EmptyState
           icon={<HiCode size={48} />}
           title="No problems found"
-          message="Try a different search term or filter."
+          message={
+            error
+              ? `Could not load problems: ${error}. Make sure your Supabase database has the table 'coding_problems' and a public SELECT policy.`
+              : 'No coding problems in the database yet. Seed the coding_problems table (or add problems as admin), then refresh.'
+          }
         />
       ) : (
         <div className="coding__problems">

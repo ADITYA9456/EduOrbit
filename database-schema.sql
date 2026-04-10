@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS contest_participants CASCADE;
 DROP TABLE IF EXISTS submissions CASCADE;
 DROP TABLE IF EXISTS contests CASCADE;
 DROP TABLE IF EXISTS coding_problems CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
 DROP TABLE IF EXISTS videos CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
 
@@ -142,6 +143,25 @@ CREATE INDEX idx_coding_problems_category ON coding_problems(category);
 CREATE INDEX idx_coding_problems_difficulty ON coding_problems(difficulty);
 CREATE INDEX idx_coding_problems_type ON coding_problems(type);
 CREATE INDEX idx_coding_problems_daily ON coding_problems(daily_challenge_date);
+
+
+-- ======================== 3B. PRACTICE QUESTIONS (EXTERNAL) ========================
+-- Cache of coding questions synced from external sources (LeetCode / GFG).
+-- This keeps the UI fast and avoids calling third-party APIs from the frontend.
+CREATE TABLE questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  difficulty TEXT NOT NULL CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
+  slug TEXT NOT NULL,
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  source TEXT NOT NULL CHECK (source IN ('leetcode', 'gfg'))
+);
+
+-- Allow upserts keyed by source+slug.
+CREATE UNIQUE INDEX idx_questions_source_slug ON questions(source, slug);
+CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+CREATE INDEX idx_questions_source ON questions(source);
+CREATE INDEX idx_questions_title ON questions(title);
 
 
 -- ======================== 4. SUBMISSIONS ========================
@@ -300,6 +320,7 @@ ALTER TABLE ai_verification_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 CREATE POLICY "Profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
@@ -313,6 +334,9 @@ CREATE POLICY "Service role can update videos" ON videos FOR UPDATE USING (true)
 -- Coding Problems
 CREATE POLICY "Problems are viewable by everyone" ON coding_problems FOR SELECT USING (true);
 CREATE POLICY "Service role can manage problems" ON coding_problems FOR ALL USING (true);
+
+-- Practice Questions (external cache)
+CREATE POLICY "Questions are viewable by everyone" ON questions FOR SELECT USING (true);
 
 -- Submissions
 CREATE POLICY "Users can view own submissions" ON submissions FOR SELECT USING (auth.uid() = user_id);
