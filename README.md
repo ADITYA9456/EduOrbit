@@ -44,38 +44,39 @@ A production-ready **Next.js 14** (App Router) application powered by **Supabase
 
 ## Getting Started
 
+> **Moving this project to another computer (Windows / Mac / Linux)?**
+> See **[SETUP.md](SETUP.md)** for the cross-platform setup guide. The short
+> version: never zip the `node_modules` folder — run `npm install` on each machine.
+
 ### Prerequisites
-- Node.js 18+
+- Node.js **18.18+** (an `.nvmrc` pins 18.18.0 — run `nvm use` if you use nvm)
 - Supabase account ([supabase.com](https://supabase.com))
 
 ### 1. Install Dependencies
 
 ```bash
-cd eduorbite-next
 npm install
 ```
 
 ### 2. Set Up Supabase
 
-1. Create a new Supabase project
-2. Go to **SQL Editor** and run the migrations:
-   - `supabase/migrations/001_initial_schema.sql` — Tables, RLS, triggers, seed data
-   - `supabase/migrations/002_rpc_functions.sql` — RPC functions
+1. Create a new Supabase project.
+2. Open the **SQL Editor** and run the schema files included in this repo:
+   - `database-schema.sql` — tables, RLS policies, triggers, and seed data
+   - `supabase/questions.sql` — coding-problem seed data
+3. Optionally seed extra data with the scripts in `scripts/` (see comments in each file).
 
 ### 3. Configure Environment
 
-Copy `.env.example` to `.env.local` and fill in your Supabase credentials:
+Copy `.env.example` to `.env.local` and fill in your credentials:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env.local     # macOS / Linux
+copy .env.example .env.local   # Windows (cmd)
 ```
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-YOUTUBE_API_KEY=optional-youtube-api-key
-```
+Only the Supabase variables are required to boot the app; the rest are optional
+(see [.env.example](.env.example) and the [Environment Variables](#environment-variables) section below).
 
 ### 4. Run Development Server
 
@@ -84,6 +85,20 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+(The command is `npm run dev` — not `npx run dev`.)
+
+## Environment Variables
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase public anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Server-only key for API routes/scripts |
+| `AI_PROVIDER` | optional | `mock` (default) or `gemini` for AI video verification |
+| `GEMINI_API_KEY` | optional | Required only when `AI_PROVIDER=gemini` |
+| `YOUTUBE_API_KEY` | optional | Enables in-app YouTube search/import |
+| `LEETCODE_SYNC_SECRET` | optional | Guards the LeetCode sync endpoint/script |
+| `NEXT_PUBLIC_APP_URL` | optional | Public base URL of the deployment |
 
 ## Project Structure
 
@@ -122,12 +137,15 @@ eduorbite-next/
 │   │   ├── constants.js
 │   │   └── utils.js
 │   └── middleware.js         # Auth session refresh + route protection
+├── scripts/                 # Seed / sync helper scripts (Node)
 ├── supabase/
-│   ├── migrations/          # SQL schema + RPC functions
-│   └── functions/           # Edge Functions (ai-verify, execute-code)
+│   └── questions.sql        # Coding-problem seed data
+├── database-schema.sql      # Full DB schema, RLS, triggers, seed data
 ├── package.json
 ├── next.config.js
-└── .env.example
+├── .env.example
+├── .nvmrc                   # Pinned Node version (18.18.0)
+└── SETUP.md                 # Cross-platform setup guide
 ```
 
 ## Deployment

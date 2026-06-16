@@ -84,12 +84,17 @@ export default function Header({ onToggleSidebar }) {
       {/* Right */}
       <div className="header__right">
         {user && (
-          <Link href="/upload" className="header__icon-btn hide-mobile" title="Upload">
+          <Link href="/upload" className="header__icon-btn hide-mobile" title="Upload" aria-label="Upload a video">
             <HiUpload size={20} />
           </Link>
         )}
 
-        <button className="header__icon-btn" onClick={toggleTheme} title="Toggle theme">
+        <button
+          className="header__icon-btn"
+          onClick={toggleTheme}
+          title="Toggle theme"
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
           {theme === 'dark' ? <HiSun size={20} /> : <HiMoon size={20} />}
         </button>
 
@@ -101,7 +106,7 @@ export default function Header({ onToggleSidebar }) {
               aria-label="User menu"
             >
               {profile?.avatar_url ? (
-                <img className="header__avatar" src={profile.avatar_url} alt="Avatar" />
+                <img className="header__avatar" src={profile.avatar_url} alt={`${profile?.full_name || 'User'} avatar`} />
               ) : (
                 <div className="header__avatar header__avatar--default">{initials}</div>
               )}

@@ -150,6 +150,49 @@ a:hover { color: var(--accent-secondary); }
 
 ::selection { background-color: var(--accent-primary); color: white; }
 
+/* ---- ACCESSIBILITY ---- */
+/* Visible keyboard focus ring for every interactive element (mouse clicks stay clean) */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.sidebar__link:focus-visible,
+.header__icon-btn:focus-visible,
+.header__menu-btn:focus-visible,
+.header__avatar-btn:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Slightly stronger placeholder contrast for readability */
+input::placeholder,
+textarea::placeholder { color: var(--text-muted); opacity: 0.85; }
+
+/* Screen-reader-only utility */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ---- UTILITIES ---- */
 .container { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--space-lg); }
 .flex { display: flex; }
@@ -638,6 +681,16 @@ select.input {
 .vlist::-webkit-scrollbar-track { background: transparent; }
 .vlist::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: var(--radius-full); }
 .vlist::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+.vlist-section-header {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
 
 .vlist-item {
   display: flex;

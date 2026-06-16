@@ -2,7 +2,7 @@
 
 import { formatCount, timeAgo } from '@/lib/utils';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { HiExternalLink, HiPlay } from 'react-icons/hi';
 import { HiSparkles } from 'react-icons/hi2';
 
@@ -51,7 +51,7 @@ export default function AISummaryPanel({ video }) {
 
   // Reset imgError when video changes
   const videoId = video?.youtube_id || video?.id;
-  const prevVideoIdRef = useMemo(() => ({ current: null }), []);
+  const prevVideoIdRef = useRef(null);
   if (videoId !== prevVideoIdRef.current) {
     prevVideoIdRef.current = videoId;
     if (imgError) setImgError(false);

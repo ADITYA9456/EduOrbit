@@ -7,6 +7,7 @@ import {
   HiChartBar,
   HiCode,
   HiHome,
+  HiPlay,
   HiShieldCheck,
   HiUpload,
   HiUser,
@@ -17,6 +18,7 @@ import { HiTrophy } from 'react-icons/hi2';
 const NAV_ITEMS = [
   { section: 'Main', links: [
     { href: '/home', label: 'Home', icon: HiHome },
+    { href: '/shorts', label: 'Shorts', icon: HiPlay },
     { href: '/coding', label: 'Coding Practice', icon: HiCode },
     { href: '/contests', label: 'Contests', icon: HiTrophy },
     { href: '/leaderboard', label: 'Leaderboard', icon: HiChartBar },

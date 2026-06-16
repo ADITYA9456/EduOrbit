@@ -1,0 +1,16 @@
+# Normalize line endings to LF across machines (prevents Windows CRLF issues)
+* text=auto eol=lf
+
+# Scripts that must stay platform-native
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh  text eol=lf
+
+# Binary files — never normalize
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

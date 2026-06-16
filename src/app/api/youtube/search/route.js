@@ -1,4 +1,5 @@
 import { createAdminSupabase } from '@/lib/supabase/server';
+import { durationToSeconds } from '@/lib/utils';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -71,7 +72,6 @@ const CATEGORY_QUERIES = {
     'software engineering tutorial',
     'programming projects',
     'coding challenges explained',
-    'tech tutorials',
   ],
   Programming: ['programming tutorial', 'learn programming', 'coding basics'],
   'Web Development': ['web development tutorial', 'frontend development', 'fullstack project'],
@@ -105,11 +105,108 @@ function shuffleArray(arr) {
 // YouTube search order options for variety
 const SEARCH_ORDERS = ['relevance', 'date', 'viewCount'];
 
+// ─── Study-only filtering (platform should show educational content) ───
+const STUDY_CORE_KEYWORDS = [
+  // General education + CS
+  'computer science', 'software engineering', 'programming', 'coding',
+  'algorithm', 'algorithms', 'data structure', 'data structures', 'dsa',
+  'leetcode', 'competitive programming', 'system design',
+
+  // Web
+  'web development', 'frontend', 'front-end', 'backend', 'back-end', 'fullstack',
+  'javascript', 'typescript', 'react', 'node', 'nextjs', 'next.js', 'html', 'css',
+  'tailwind',
+
+  // Data / AI
+  'data science', 'machine learning', 'deep learning', 'neural network',
+  'artificial intelligence', 'generative ai', 'llm', 'statistics', 'probability',
+  'linear algebra', 'calculus',
+
+  // Languages / DB
+  'python', 'java', 'c++', 'c#', 'golang', 'rust', 'sql', 'database', 'postgres',
+  'postgresql', 'mysql', 'mongodb',
+
+  // Science
+  'mathematics', 'math', 'physics', 'chemistry', 'biology', 'science', 'engineering',
+
+  // DevOps
+  'devops', 'docker', 'kubernetes', 'ci/cd', 'ci cd', 'cloud', 'aws', 'azure', 'gcp',
+  'linux', 'git',
+
+  // Design / Business (still study-related categories in this app)
+  'ui', 'ux', 'figma', 'design', 'business', 'marketing', 'finance', 'economics',
+  'entrepreneur', 'startup',
+];
+
+const STUDY_SIGNAL_KEYWORDS = [
+  'tutorial', 'course', 'lecture', 'lesson', 'class', 'workshop', 'bootcamp',
+  'roadmap', 'explained', 'beginner', 'beginners', 'advanced', 'interview',
+  'crash course', 'full course', 'guide',
+];
+
+const NON_STUDY_KEYWORDS = [
+  'prank', 'funny', 'meme', 'vlog', 'unboxing', 'reaction', 'drama', 'gossip',
+  'celebrity', 'entertainment', 'music video', 'lyrics', 'song', 'movie trailer',
+  'trailer', 'gaming', 'walkthrough', 'asmr', 'mukbang', 'challenge', 'giveaway',
+  'subscribe', 'tiktok', 'instagram', 'snapchat', 'reels', 'viral', 'status',
+  'content creation', 'contentcreation',
+];
+
+function hasAnyKeyword(text, keywords) {
+  for (const kw of keywords) {
+    if (text.includes(kw)) return true;
+  }
+  return false;
+}
+
+function isStudyRelatedVideo(video, category = 'All') {
+  const title = video?.title || '';
+  const description = video?.description || '';
+  const channel = video?.channel_title || video?.channelTitle || video?.channel || '';
+  const text = `${title} ${description} ${channel}`.toLowerCase();
+
+  const categoryText = (category || '').toLowerCase();
+  const coreHit =
+    hasAnyKeyword(text, STUDY_CORE_KEYWORDS) ||
+    (categoryText && categoryText !== 'all' && text.includes(categoryText));
+
+  if (!coreHit) return false;
+
+  // If it looks like entertainment/viral content, require strong study intent words
+  if (hasAnyKeyword(text, NON_STUDY_KEYWORDS) && !hasAnyKeyword(text, STUDY_SIGNAL_KEYWORDS)) {
+    return false;
+  }
+
+  return true;
+}
+
+function filterStudyVideos(videos, category) {
+  return (videos || []).filter((v) => isStudyRelatedVideo(v, category));
+}
+
+function filterShortVideos(videos) {
+  return (videos || []).filter((v) => {
+    const seconds = durationToSeconds(v?.duration);
+    return seconds > 0 && seconds <= 60;
+  });
+}
+
+// Inverse of filterShortVideos: keep everything that is NOT a confirmed short
+// (long videos + videos whose duration is unknown). Used for the regular home
+// feed so that sub-1-minute "shorts" only appear in the dedicated Shorts page.
+function filterOutShortVideos(videos) {
+  return (videos || []).filter((v) => {
+    const seconds = durationToSeconds(v?.duration);
+    return seconds === 0 || seconds > 60;
+  });
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
     const category = searchParams.get('category') || 'All';
+    const shortsOnly = searchParams.get('shorts') === '1';
     let pageToken = searchParams.get('pageToken') || '';
     let page = parseInt(searchParams.get('page') || '0', 10);
     // Parse fallback tokens for page
@@ -132,6 +229,10 @@ export async function GET(request) {
       searchQuery = `${searchQuery} ${category}`;
     }
 
+    if (shortsOnly && !/\bshorts\b/i.test(searchQuery)) {
+      searchQuery = `${searchQuery} shorts`;
+    }
+
     // Pick a random search order for non-user searches
     const searchOrder = isUserSearch
       ? 'relevance'
@@ -142,8 +243,12 @@ export async function GET(request) {
     if (apiKey) {
       const ytResult = await fetchFromYouTube(apiKey, searchQuery, category, pageToken, maxResults, searchOrder);
       if (ytResult && ytResult.videos.length > 0) {
-        if (!isUserSearch) ytResult.videos = shuffleArray(ytResult.videos);
-        return NextResponse.json(ytResult);
+        let filtered = filterStudyVideos(ytResult.videos, category);
+        filtered = shortsOnly ? filterShortVideos(filtered) : filterOutShortVideos(filtered);
+        if (filtered.length > 0) {
+          ytResult.videos = !isUserSearch ? shuffleArray(filtered) : filtered;
+          return NextResponse.json(ytResult);
+        }
       }
     }
 
@@ -168,10 +273,14 @@ export async function GET(request) {
       for (const result of allResults) {
         if (result.status === 'fulfilled' && result.value && result.value.videos?.length > 0) {
           const data = result.value;
-          if (!isUserSearch) data.videos = shuffleArray(data.videos);
-          // Always provide next page token for infinite scroll
-          data.nextPageToken = `fallback_page_${page + 1}`;
-          return NextResponse.json(data);
+          let filtered = filterStudyVideos(data.videos, category);
+          filtered = shortsOnly ? filterShortVideos(filtered) : filterOutShortVideos(filtered);
+          if (filtered.length > 0) {
+            data.videos = !isUserSearch ? shuffleArray(filtered) : filtered;
+            // Always provide next page token for infinite scroll
+            data.nextPageToken = `fallback_page_${page + 1}`;
+            return NextResponse.json(data);
+          }
         }
       }
     } catch (e) {
@@ -182,7 +291,11 @@ export async function GET(request) {
     const dbResult = await fallbackToDatabase(query.trim(), category, page);
     const dbData = await dbResult.json();
     if (dbData.videos && dbData.videos.length > 0) {
-      return NextResponse.json(dbData);
+      let filtered = filterStudyVideos(dbData.videos, category);
+      filtered = shortsOnly ? filterShortVideos(filtered) : filterOutShortVideos(filtered);
+      if (filtered.length > 0) {
+        return NextResponse.json({ ...dbData, videos: filtered });
+      }
     }
 
     // Ultimate fallback: curated videos with pagination
@@ -198,16 +311,22 @@ export async function GET(request) {
       published_at: '',
       like_count: 0,
     }));
+    curated = filterStudyVideos(curated, category);
+    curated = shortsOnly ? filterShortVideos(curated) : filterOutShortVideos(curated);
     return NextResponse.json({
       videos: curated,
       nextPageToken: curated.length >= maxResults ? `curated_page_${page + 1}` : null,
     });
   } catch (err) {
     console.error('YouTube search route error:', err);
-    return NextResponse.json({
-      videos: shuffleArray([...CURATED_VIDEOS]).map((v) => ({ ...v, description: '', published_at: '', like_count: 0 })),
-      nextPageToken: null,
-    });
+    let videos = filterStudyVideos(
+      shuffleArray([...CURATED_VIDEOS]).map((v) => ({ ...v, description: '', published_at: '', like_count: 0 })),
+      'All'
+    );
+    const { searchParams } = new URL(request.url);
+    const shortsOnly = searchParams.get('shorts') === '1';
+    videos = shortsOnly ? filterShortVideos(videos) : filterOutShortVideos(videos);
+    return NextResponse.json({ videos, nextPageToken: null });
   }
 }
 

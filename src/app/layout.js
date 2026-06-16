@@ -30,6 +30,10 @@ export default function RootLayout({ children }) {
               position="bottom-right"
               toastOptions={{
                 className: 'toast-custom',
+                duration: 4000,
+                ariaProps: { role: 'status', 'aria-live': 'polite' },
+                success: { duration: 3000 },
+                error: { duration: 5000 },
                 style: {
                   background: 'var(--bg-elevated)',
                   color: 'var(--text-primary)',

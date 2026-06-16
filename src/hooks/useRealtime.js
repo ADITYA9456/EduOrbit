@@ -37,6 +37,9 @@ export function useRealtimeSubscription(table, onChange, filter = null) {
     return () => {
       supabase.removeChannel(channel);
     };
+    // `filter` is intentionally destructured into primitives (column/value) so the
+    // effect re-subscribes only when those change, not on every new object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, filter?.column, filter?.value, supabase]);
 }
 

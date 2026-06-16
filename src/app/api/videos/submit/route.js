@@ -20,12 +20,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'videoId, title, and category are required' }, { status: 400 });
     }
 
-    // Check for duplicate
+    // Check for duplicate (maybeSingle avoids the noisy "no rows" error that .single() emits)
     const { data: existing } = await supabase
       .from('videos')
       .select('id')
       .eq('youtube_id', videoId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json({ error: 'This video has already been submitted' }, { status: 409 });
