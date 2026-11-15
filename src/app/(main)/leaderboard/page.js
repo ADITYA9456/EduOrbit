@@ -1,12 +1,53 @@
 'use client';
 
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
+import Table from '@/components/ui/Table';
+import Tabs from '@/components/ui/Tabs';
+import Badge from '@/components/ui/Badge';
 import { useAuth } from '@/context/AuthProvider';
 import { useRealtimeLeaderboard } from '@/hooks/useRealtime';
 import { createClient } from '@/lib/supabase/client';
 import { useCallback, useEffect, useState } from 'react';
-import { HiFire, HiLightningBolt, HiStar } from 'react-icons/hi';
+import { HiFire } from 'react-icons/hi';
 import { HiTrophy } from 'react-icons/hi2';
+
+const SORTS = [
+  { id: 'total_points', label: 'Points' },
+  { id: 'problems_solved', label: 'Solved' },
+  { id: 'current_streak', label: 'Streak' },
+];
+
+const SORT_UNITS = { total_points: 'pts', problems_solved: 'solved', current_streak: 'day streak' };
+
+const COLUMNS = [
+  { key: 'rank', label: 'Rank' },
+  { key: 'user', label: 'User' },
+  { key: 'points', label: 'Points' },
+  { key: 'solved', label: 'Solved' },
+  { key: 'streak', label: 'Streak' },
+  { key: 'badges', label: 'Badges' },
+];
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function displayName(u) {
+  return u.full_name || u.username || 'User';
+}
+
+function Avatar({ user }) {
+  return (
+    <span className="lb-avatar" aria-hidden="true">
+      {user.avatar_url ? <img src={user.avatar_url} alt="" /> : displayName(user)[0].toUpperCase()}
+    </span>
+  );
+}
+
+function Rank({ index }) {
+  return index < 3
+    ? <><span aria-hidden="true">{MEDALS[index]}</span><span className="sr-only">Rank {index + 1}</span></>
+    : <>{index + 1}</>;
+}
 
 export default function LeaderboardPage() {
   const supabase = createClient();
@@ -41,32 +82,16 @@ export default function LeaderboardPage() {
     }
   }, [sortBy]));
 
-  const podium = users.slice(0, 3);
-  const rest = users.slice(3);
+  const myIndex = user ? users.findIndex((u) => u.id === user.id) : -1;
 
   return (
     <div className="leaderboard animate-fade-in">
-      <div className="leaderboard__header">
-        <h1><HiTrophy size={28} /> Leaderboard</h1>
-        <p className="text-muted">Top performers in the community</p>
-      </div>
+      <PageHeader
+        title="Leaderboard"
+        description={myIndex >= 0 ? `You are ranked #${myIndex + 1} of ${users.length}.` : 'Top performers in the community.'}
+      />
 
-      {/* Sort tabs */}
-      <div className="flex gap-sm" style={{ marginBottom: 'var(--space-xl)' }}>
-        {[
-          { key: 'total_points', label: 'Points', icon: HiStar },
-          { key: 'problems_solved', label: 'Solved', icon: HiLightningBolt },
-          { key: 'current_streak', label: 'Streak', icon: HiFire },
-        ].map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            className={`btn btn--sm ${sortBy === key ? 'btn--primary' : 'btn--ghost'}`}
-            onClick={() => setSortBy(key)}
-          >
-            <Icon size={14} /> {label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={SORTS} value={sortBy} onChange={setSortBy} label="Sort leaderboard by" />
 
       {loading ? (
         <div className="route-loading">
@@ -77,87 +102,61 @@ export default function LeaderboardPage() {
         <EmptyState icon={<HiTrophy size={48} />} title="No users yet" message="Be the first to earn points!" />
       ) : (
         <>
-          {/* Top 3 Podium */}
-          <div className="leaderboard__podium">
-            {[1, 0, 2].map((idx) => {
-              const u = podium[idx];
-              if (!u) return <div key={idx} />;
-              const rank = idx + 1;
-              const heights = { 1: 180, 2: 140, 3: 120 };
-              const medals = ['🥇', '🥈', '🥉'];
+          <div className="lb-desktop">
+            <Table caption="Leaderboard rankings" columns={COLUMNS} className="lb-table">
+              {users.map((u, i) => {
+                const me = u.id === user?.id;
+                return (
+                  <tr key={u.id} className={me ? 'row--me' : undefined} aria-current={me ? 'true' : undefined}>
+                    <td className="lb-rank"><Rank index={i} /></td>
+                    <td>
+                      <span className="lb-user">
+                        <Avatar user={u} />
+                        <span className="table__primary">{displayName(u)}</span>
+                        {me && <Badge tone="accent">You</Badge>}
+                      </span>
+                    </td>
+                    <td className="lb-score">{u.total_points ?? 0}</td>
+                    <td>{u.problems_solved ?? 0}</td>
+                    <td>
+                      {u.current_streak > 0
+                        ? <span className="lb-streak"><HiFire size={14} aria-hidden="true" /> {u.current_streak}</span>
+                        : <span className="text-muted"><span aria-hidden="true">—</span><span className="sr-only">No streak</span></span>}
+                    </td>
+                    <td>{u.badges?.length || 0}</td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
 
+          <ol className="lb-mobile" aria-label="Leaderboard rankings">
+            {users.map((u, i) => {
+              const me = u.id === user?.id;
               return (
-                <div key={u.id} className="podium-card" style={{ alignSelf: 'flex-end' }}>
-                  <div className="podium-avatar" style={{
-                    width: rank === 1 ? 80 : 64,
-                    height: rank === 1 ? 80 : 64,
-                    borderRadius: '50%',
-                    background: 'var(--accent-gradient)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: rank === 1 ? '1.5rem' : '1.2rem',
-                    margin: '0 auto var(--space-sm)',
-                    border: rank === 1 ? '3px solid var(--warning)' : '2px solid var(--border)',
-                    overflow: 'hidden',
-                  }}>
-                    {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      (u.full_name || u.username || 'U')[0].toUpperCase()
-                    )}
+                <li key={u.id} className={`lb-card ${me ? 'lb-card--me' : ''}`} aria-current={me ? 'true' : undefined}>
+                  <span className="lb-card__rank"><Rank index={i} /></span>
+                  <Avatar user={u} />
+                  <div className="lb-card__body">
+                    <span className="lb-card__name">
+                      {displayName(u)}
+                      {me && <Badge tone="accent">You</Badge>}
+                    </span>
+                    <span className="lb-card__stats">
+                      <span>{u.problems_solved ?? 0} solved</span>
+                      {u.current_streak > 0 && (
+                        <span className="lb-streak"><HiFire size={12} aria-hidden="true" /> {u.current_streak}d</span>
+                      )}
+                      <span>{u.badges?.length || 0} badges</span>
+                    </span>
                   </div>
-                  <span style={{ fontSize: '1.5rem' }}>{medals[idx]}</span>
-                  <h4 style={{ marginBottom: 2 }}>{u.full_name || u.username}</h4>
-                  <p className="text-sm" style={{ color: 'var(--accent)', fontWeight: 700 }}>
-                    {sortBy === 'total_points' && `${u.total_points} pts`}
-                    {sortBy === 'problems_solved' && `${u.problems_solved} solved`}
-                    {sortBy === 'current_streak' && `${u.current_streak} day streak`}
-                  </p>
-                  <div className="podium-bar" style={{ height: heights[rank], background: `linear-gradient(180deg, var(--accent) 0%, transparent 100%)`, opacity: 0.15, borderRadius: 'var(--radius-md) var(--radius-md) 0 0', marginTop: 'var(--space-sm)' }} />
-                </div>
+                  <span className="lb-card__points">
+                    {u[sortBy] ?? 0}<small>{SORT_UNITS[sortBy]}</small>
+                  </span>
+                </li>
               );
             })}
-          </div>
-
-          {/* Rest of leaderboard */}
-          <div className="leaderboard__table" role="table" aria-label="Leaderboard rankings" style={{ marginTop: 'var(--space-xl)' }}>
-            <div className="leaderboard__row leaderboard__row--header" role="row">
-              <span style={{ width: 50 }}>Rank</span>
-              <span style={{ flex: 1 }}>User</span>
-              <span style={{ width: 100, textAlign: 'center' }}>Points</span>
-              <span style={{ width: 100, textAlign: 'center' }}>Solved</span>
-              <span style={{ width: 100, textAlign: 'center' }}>Streak</span>
-              <span style={{ width: 80, textAlign: 'center' }}>Badges</span>
-            </div>
-            {rest.map((u, i) => (
-              <div key={u.id} role="row" className={`leaderboard__row ${u.id === user?.id ? 'leaderboard__row--me' : ''}`}>
-                <span style={{ width: 50, fontWeight: 600 }}>{i + 4}</span>
-                <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-secondary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 600, fontSize: '0.8rem', overflow: 'hidden',
-                  }}>
-                    {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      (u.full_name || u.username || 'U')[0].toUpperCase()
-                    )}
-                  </div>
-                  <strong>{u.full_name || u.username}</strong>
-                </span>
-                <span style={{ width: 100, textAlign: 'center', fontWeight: 600, color: 'var(--accent)' }}>{u.total_points}</span>
-                <span style={{ width: 100, textAlign: 'center' }}>{u.problems_solved}</span>
-                <span style={{ width: 100, textAlign: 'center' }}>
-                  {u.current_streak > 0 ? <><HiFire size={14} color="var(--warning)" /> {u.current_streak}</> : '—'}
-                </span>
-                <span style={{ width: 80, textAlign: 'center' }}>{u.badges?.length || 0}</span>
-              </div>
-            ))}
-          </div>
+          </ol>
         </>
       )}
     </div>

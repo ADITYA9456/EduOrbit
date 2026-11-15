@@ -3,6 +3,7 @@
 import AISummaryPanel from '@/components/video/AISummaryPanel';
 import GuestClosing from '@/components/home/GuestClosing';
 import GuestHero from '@/components/home/GuestHero';
+import EmptyState from '@/components/ui/EmptyState';
 import CategoryPills from '@/components/video/CategoryPills';
 import VideoListItem, { VideoListItemSkeleton } from '@/components/video/VideoListItem';
 import { useAuth } from '@/context/AuthProvider';
@@ -183,21 +184,20 @@ export default function HomePage() {
               <VideoListItemSkeleton key={i} />
             ))
           ) : error && videos.length === 0 ? (
-            <div className="loading-container" style={{ minHeight: 200, textAlign: 'center' }}>
-              <p className="text-muted">{error}</p>
-              <button
-                className="btn btn--primary"
-                style={{ marginTop: 'var(--space-md)' }}
-                onClick={() => { setError(null); fetchVideos(true); }}
-              >
-                Retry
-              </button>
-            </div>
+            <EmptyState
+              title="Couldn't load videos"
+              message={error}
+              action={
+                <button className="btn btn--primary" onClick={() => { setError(null); fetchVideos(false); }}>
+                  Retry
+                </button>
+              }
+            />
           ) : videos.length === 0 ? (
-            <div className="loading-container" style={{ minHeight: 200 }}>
-              <p className="text-muted">No videos found</p>
-            </div>
-          ) : (
+            <EmptyState
+              title="No videos found"
+              message={searchQuery ? 'Try a different search term.' : 'Try another category.'}
+            />          ) : (
             videos.map((video, index) => (
               <VideoListItem
                 key={video.id || video.youtube_id}
@@ -212,7 +212,7 @@ export default function HomePage() {
           {/* Loading more indicator */}
           {loadingMore && (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-md)' }}>
-              <div className="spinner" style={{ width: 28, height: 28 }} />
+              <div className="spinner" style={{ width: 28, height: 28 }} role="status" aria-label="Loading more videos" />
             </div>
           )}
 

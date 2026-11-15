@@ -3,11 +3,22 @@
 import { useAuth } from '@/context/AuthProvider';
 import { CATEGORIES } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import Badge from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
+import GlassPanel from '@/components/ui/GlassPanel';
+import Skeleton from '@/components/ui/Skeleton';
+import { createClient } from '@/lib/supabase/client';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { HiCheckCircle, HiLightningBolt, HiLink, HiUpload, HiXCircle } from 'react-icons/hi';
+import { HiCheckCircle, HiClock, HiLightningBolt, HiLink, HiUpload, HiXCircle } from 'react-icons/hi';
 
 const STEPS = ['Enter URL', 'Details', 'Submit'];
+
+const STATUS = {
+  pending: { tone: 'medium', label: 'Pending review', Icon: HiClock, color: 'var(--warning)', text: 'Waiting for an admin to review it. This page updates on its own.' },
+  approved: { tone: 'success', label: 'Approved', Icon: HiCheckCircle, color: 'var(--success)', text: 'Live on EduOrbit. Thanks for contributing.' },
+  rejected: { tone: 'danger', label: 'Rejected', Icon: HiXCircle, color: 'var(--danger)', text: 'It did not meet the guidelines, so it was not published. You can submit a different video.' },
+};
 
 export default function UploadPage() {
   const { user } = useAuth();
@@ -27,6 +38,39 @@ export default function UploadPage() {
   const [verification, setVerification] = useState(null);
   const [verifying, setVerifying] = useState(false);
 
+  // Submission tracking
+  const [submitted, setSubmitted] = useState(null);
+  const [mine, setMine] = useState([]);
+  const [mineLoading, setMineLoading] = useState(true);
+  const [urlError, setUrlError] = useState('');
+
+  const loadMine = useCallback(async () => {
+    if (!user) return;
+    const { data } = await createClient()
+      .from('videos')
+      .select('id, youtube_id, title, thumbnail_url, status, created_at')
+      .eq('submitted_by', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    const rows = data || [];
+    setMine(rows);
+    setMineLoading(false);
+    setSubmitted((prev) => {
+      const fresh = prev && rows.find((r) => r.id === prev.id);
+      return fresh ? { ...prev, status: fresh.status } : prev;
+    });
+  }, [user]);
+
+  useEffect(() => { loadMine(); }, [loadMine]);
+
+  // Poll while something is pending so approval or rejection shows without a reload.
+  const anyPending = mine.some((v) => v.status === 'pending');
+  useEffect(() => {
+    if (!anyPending) return undefined;
+    const t = setInterval(loadMine, 20000);
+    return () => clearInterval(t);
+  }, [anyPending, loadMine]);
+
   // Extract YouTube video ID from URL
   const extractVideoId = (url) => {
     const patterns = [
@@ -44,7 +88,11 @@ export default function UploadPage() {
 
   const handleUrlSubmit = async () => {
     const videoId = extractVideoId(youtubeUrl);
-    if (!videoId) return toast.error('Please enter a valid YouTube URL');
+    if (!videoId) {
+      setUrlError('Please enter a valid YouTube URL');
+      return toast.error('Please enter a valid YouTube URL');
+    }
+    setUrlError('');
 
     setVerifying(true);
     try {
@@ -96,7 +144,9 @@ export default function UploadPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
 
+      setSubmitted(data.video || { status: 'pending' });
       setStep(2);
+      loadMine();
       toast.success('Video submitted for review!');
     } catch (err) {
       toast.error(err.message);
@@ -149,14 +199,18 @@ export default function UploadPage() {
             <HiLink size={20} /> Paste YouTube URL
           </h3>
           <div className="input-group">
-            <label className="input-label">YouTube URL</label>
+            <label className="input-label" htmlFor="upload-url">YouTube URL</label>
             <input
+              id="upload-url"
               className="input"
               type="url"
               placeholder="https://youtube.com/watch?v=..."
               value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
+              onChange={(e) => { setYoutubeUrl(e.target.value); setUrlError(''); }}
+              aria-invalid={urlError ? 'true' : undefined}
+              aria-describedby={urlError ? 'upload-url-error' : undefined}
             />
+            {urlError && <p id="upload-url-error" className="field-msg field-msg--error" role="alert">{urlError}</p>}
           </div>
           <button
             className="btn btn--primary"
@@ -211,18 +265,18 @@ export default function UploadPage() {
           )}
 
           <div className="input-group">
-            <label className="input-label">Title *</label>
-            <input className="input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
+            <label className="input-label" htmlFor="upload-title">Title *</label>
+            <input id="upload-title" className="input" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} />
           </div>
 
           <div className="input-group">
-            <label className="input-label">Description</label>
-            <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={2000} />
+            <label className="input-label" htmlFor="upload-description">Description</label>
+            <textarea id="upload-description" className="input" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={2000} />
           </div>
 
           <div className="input-group">
-            <label className="input-label">Category *</label>
-            <select className="input" value={category} onChange={(e) => setCategory(e.target.value)} required>
+            <label className="input-label" htmlFor="upload-category">Category *</label>
+            <select id="upload-category" className="input" value={category} onChange={(e) => setCategory(e.target.value)} required>
               <option value="">Select a category</option>
               {CATEGORIES.filter((c) => c !== 'All').map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -231,8 +285,8 @@ export default function UploadPage() {
           </div>
 
           <div className="input-group">
-            <label className="input-label">Tags (comma-separated)</label>
-            <input className="input" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="react, javascript, tutorial" />
+            <label className="input-label" htmlFor="upload-tags">Tags (comma-separated)</label>
+            <input id="upload-tags" className="input" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="react, javascript, tutorial" />
           </div>
 
           <div className="flex gap-sm" style={{ marginTop: 'var(--space-lg)' }}>
@@ -245,21 +299,54 @@ export default function UploadPage() {
       )}
 
       {/* Step 2 - Success */}
-      {step === 2 && (
-        <div className="card text-center" style={{ maxWidth: 500, margin: '0 auto', padding: 'var(--space-2xl)' }}>
-          <HiCheckCircle size={64} color="var(--success)" style={{ margin: '0 auto var(--space-lg)' }} />
-          <h2>Video Submitted!</h2>
-          <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>
-            Your video has been submitted for review. An admin will approve it shortly.
-          </p>
-          <div className="flex gap-sm" style={{ justifyContent: 'center', marginTop: 'var(--space-xl)' }}>
-            <button className="btn btn--primary" onClick={() => router.push('/home')}>Go Home</button>
-            <button className="btn btn--secondary" onClick={() => { setStep(0); setYoutubeUrl(''); setVerification(null); setTitle(''); setDescription(''); setCategory(''); setTags(''); }}>
-              Submit Another
-            </button>
+      {step === 2 && (() => {
+        const s = STATUS[submitted?.status] || STATUS.pending;
+        return (
+          <GlassPanel className="upload-status text-center" style={{ maxWidth: 500, margin: '0 auto', padding: 'var(--space-2xl)' }}>
+            <s.Icon size={64} color={s.color} aria-hidden="true" style={{ margin: '0 auto var(--space-lg)' }} />
+            <h2>{submitted?.status === 'approved' ? 'Video approved' : submitted?.status === 'rejected' ? 'Video rejected' : 'Video submitted'}</h2>
+            <p style={{ marginTop: 'var(--space-sm)' }}>
+              <Badge tone={s.tone} role="status">{s.label}</Badge>
+            </p>
+            <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>{s.text}</p>
+            <div className="flex gap-sm" style={{ justifyContent: 'center', marginTop: 'var(--space-xl)' }}>
+              <button className="btn btn--primary" onClick={() => router.push('/home')}>Go Home</button>
+              <button className="btn btn--secondary" onClick={() => { setStep(0); setYoutubeUrl(''); setVerification(null); setTitle(''); setDescription(''); setCategory(''); setTags(''); setSubmitted(null); }}>
+                Submit Another
+              </button>
+            </div>
+          </GlassPanel>
+        );
+      })()}
+
+      {/* Your submissions */}
+      <section className="upload-mine" aria-labelledby="upload-mine-title">
+        <h2 id="upload-mine-title" className="upload-mine__title">Your submissions</h2>
+        {mineLoading ? (
+          <div className="upload-mine__list" aria-busy="true">
+            <Skeleton height={64} />
+            <Skeleton height={64} />
           </div>
-        </div>
-      )}
+        ) : mine.length === 0 ? (
+          <EmptyState title="No submissions yet" message="Videos you submit will show up here with their review status." />
+        ) : (
+          <ul className="upload-mine__list">
+            {mine.map((v) => {
+              const s = STATUS[v.status] || STATUS.pending;
+              return (
+                <li key={v.id} className="upload-mine__item glass-panel">
+                  <s.Icon size={22} color={s.color} aria-hidden="true" />
+                  <div className="upload-mine__info">
+                    <span className="upload-mine__name">{v.title}</span>
+                    <span className="text-muted text-sm">{s.text}</span>
+                  </div>
+                  <Badge tone={s.tone}>{s.label}</Badge>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

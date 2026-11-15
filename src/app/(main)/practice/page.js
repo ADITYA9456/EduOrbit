@@ -3,27 +3,27 @@
 // Practice Page
 // - Reads cached questions from Supabase table: `questions`
 // - Provides filters (difficulty/source) and title search
-// - Uses Tailwind for a clean, responsive card grid UI
+// - Shows today's daily challenge above the list
 
+import DailyChallengeCard from '@/components/coding/DailyChallengeCard';
+import DifficultyBadge from '@/components/coding/DifficultyBadge';
+import FilterChips from '@/components/coding/FilterChips';
+import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HiCode, HiSearch } from 'react-icons/hi';
 
-const DIFFICULTY_OPTIONS = ['All', 'Easy', 'Medium', 'Hard'];
+const DIFFICULTY_OPTIONS = ['All', 'Easy', 'Medium', 'Hard'].map((d) => ({
+  value: d,
+  label: d,
+  tone: d === 'All' ? undefined : d.toLowerCase(),
+}));
 const SOURCE_OPTIONS = [
-  { value: 'All', label: 'All Sources' },
+  { value: 'All', label: 'All sources' },
   { value: 'leetcode', label: 'LeetCode' },
   { value: 'gfg', label: 'GFG' },
 ];
-
-function difficultyBadgeClass(difficulty) {
-  const base =
-    'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold';
-
-  if (difficulty === 'Easy') return `${base} border-[var(--success)] text-[var(--success)]`;
-  if (difficulty === 'Medium') return `${base} border-[var(--warning)] text-[var(--warning)]`;
-  if (difficulty === 'Hard') return `${base} border-[var(--danger)] text-[var(--danger)]`;
-  return `${base} border-[var(--border-color)] text-[var(--text-secondary)]`;
-}
 
 function sourceLabel(source) {
   if (source === 'leetcode') return 'LeetCode';
@@ -37,6 +37,7 @@ export default function PracticePage() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [dailyChallenge, setDailyChallenge] = useState(null);
 
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('All');
@@ -75,123 +76,71 @@ export default function PracticePage() {
     loadQuestions();
   }, [loadQuestions]);
 
+  useEffect(() => {
+    fetch('/api/daily-challenge')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.challenge) setDailyChallenge(data.challenge); })
+      .catch(() => {});
+  }, []);
+
   const resultCount = questions.length;
 
   return (
-    <div className="mx-auto w-full max-w-[var(--max-width)] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-          Practice
-        </h1>
-        <p className="text-sm text-[var(--text-secondary)] sm:text-base">
-          Browse coding questions cached in Supabase.
-        </p>
-      </div>
+    <div className="coding animate-fade-in">
+      <PageHeader
+        title="Practice"
+        description="Browse coding questions cached in Supabase."
+      />
 
-      {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 gap-3 rounded-[var(--radius-lg)] border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 shadow-[var(--shadow-sm)] sm:grid-cols-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-[var(--text-secondary)]">Search</span>
+      <DailyChallengeCard challenge={dailyChallenge} />
+
+      <div className="filters-panel">
+        <div className="filters-panel__search">
+          <HiSearch size={18} aria-hidden="true" />
           <input
+            className="input"
+            type="search"
+            aria-label="Search questions by title"
+            placeholder="Search by title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title..."
-            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-primary)]"
           />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-[var(--text-secondary)]">Difficulty</span>
-          <select
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-primary)]"
-          >
-            {DIFFICULTY_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-[var(--text-secondary)]">Source</span>
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-primary)]"
-          >
-            {SOURCE_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="mb-4 flex items-center justify-between gap-3 text-sm text-[var(--text-secondary)]">
-        <div>{loading ? 'Loading...' : `Showing ${resultCount} question${resultCount === 1 ? '' : 's'}`}</div>
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-[var(--radius-md)] border border-[var(--danger)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--danger)]">
-          {error}
         </div>
-      )}
+        <FilterChips label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
+        <FilterChips label="Source" options={SOURCE_OPTIONS} value={source} onChange={setSource} />
+      </div>
+
+      <p className="text-sm text-muted" role="status">
+        {loading ? 'Loading...' : `Showing ${resultCount} question${resultCount === 1 ? '' : 's'}`}
+      </p>
+
+      {error && <div className="form-error" role="alert">{error}</div>}
 
       {!loading && !error && resultCount === 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--border-color)] bg-[var(--bg-secondary)] p-8 text-center shadow-[var(--shadow-sm)]">
-          <div className="text-3xl">📭</div>
-          <div className="mt-3 text-base font-semibold text-[var(--text-primary)]">No questions found</div>
-          <div className="mt-1 text-sm text-[var(--text-secondary)]">
-            Try clearing filters or searching with a different keyword.
-          </div>
-        </div>
+        <EmptyState
+          icon={<HiCode size={48} />}
+          title="No questions found"
+          message="Try clearing filters or searching with a different keyword."
+        />
       )}
 
-      {/* Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="practice-grid">
         {questions.map((q) => {
           const tags = Array.isArray(q.tags) ? q.tags : [];
-
           return (
-            <div
-              key={q.id}
-              className="flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 shadow-[var(--shadow-sm)] transition hover:border-[var(--accent-primary)] hover:shadow-[var(--shadow-glow)]"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">
-                    {q.title}
-                  </h3>
-                  <span className={difficultyBadgeClass(q.difficulty)}>{q.difficulty}</span>
-                </div>
-
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-                    {sourceLabel(q.source)}
-                  </span>
-
-                  {tags.slice(0, 4).map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]"
-                      title={tag}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-
-                  {tags.length > 4 && (
-                    <span className="inline-flex items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
-                      +{tags.length - 4}
-                    </span>
-                  )}
-                </div>
+            <article key={q.id} className="practice-card">
+              <div className="practice-card__head">
+                <h3 className="practice-card__title">{q.title}</h3>
+                <DifficultyBadge difficulty={q.difficulty} />
               </div>
-            </div>
+              <div className="practice-card__tags">
+                <span className="badge badge--neutral">{sourceLabel(q.source)}</span>
+                {tags.slice(0, 4).map((tag) => (
+                  <span key={tag} className="badge badge--tag" title={tag}>{tag}</span>
+                ))}
+                {tags.length > 4 && <span className="badge badge--neutral">+{tags.length - 4}</span>}
+              </div>
+            </article>
           );
         })}
       </div>

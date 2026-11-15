@@ -1,7 +1,10 @@
 'use client';
 
+import Badge from '@/components/ui/Badge';
 import CountdownTimer from '@/components/ui/CountdownTimer';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
+import Tabs from '@/components/ui/Tabs';
 import { useAuth } from '@/context/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -20,10 +23,15 @@ function getContestStatus(contest) {
 }
 
 const STATUS_LABELS = {
-  upcoming: { label: 'Upcoming', color: 'var(--warning)', icon: HiClock },
-  active: { label: 'Live', color: 'var(--success)', icon: HiTrophy },
-  ended: { label: 'Ended', color: 'var(--text-muted)', icon: HiCalendar },
+  upcoming: { label: 'Upcoming', tone: 'medium', icon: HiClock },
+  active: { label: 'Live', tone: 'easy', icon: HiTrophy },
+  ended: { label: 'Ended', tone: 'neutral', icon: HiCalendar },
 };
+
+const FILTER_TABS = ['all', 'active', 'upcoming', 'ended'].map((f) => ({
+  id: f,
+  label: f.charAt(0).toUpperCase() + f.slice(1),
+}));
 
 export default function ContestsPage() {
   const supabase = createClient();
@@ -74,25 +82,9 @@ export default function ContestsPage() {
 
   return (
     <div className="contests animate-fade-in">
-      <div className="contests__header">
-        <div>
-          <h1><HiTrophy size={28} /> Contests</h1>
-          <p className="text-muted">Compete with others and climb the leaderboard</p>
-        </div>
-      </div>
+      <PageHeader title="Contests" description="Compete with others and climb the leaderboard." />
 
-      {/* Filter tabs */}
-      <div className="flex gap-sm" style={{ marginBottom: 'var(--space-xl)' }}>
-        {['all', 'active', 'upcoming', 'ended'].map((f) => (
-          <button
-            key={f}
-            className={`btn btn--sm ${filter === f ? 'btn--primary' : 'btn--ghost'}`}
-            onClick={() => setFilter(f)}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={FILTER_TABS} value={filter} onChange={setFilter} label="Filter contests by status" />
 
       {loading ? (
         <div className="loading-container"><div className="spinner" /></div>
@@ -109,55 +101,48 @@ export default function ContestsPage() {
             const info = STATUS_LABELS[status];
             const Icon = info.icon;
             const participantCount = contest.contest_participants?.[0]?.count || 0;
+            const action = status === 'active' ? 'Join now' : status === 'upcoming' ? 'Register' : 'View results';
 
             return (
-              <div key={contest.id} className="card contest-card" style={{ cursor: 'pointer' }}
-                onClick={() => status === 'ended' ? router.push(`/contests/${contest.id}`) : handleJoin(contest.id)}
-              >
-                <div className="flex-between" style={{ marginBottom: 'var(--space-md)' }}>
-                  <span className="badge" style={{
-                    background: `${info.color}22`,
-                    color: info.color,
-                    border: `1px solid ${info.color}44`,
-                  }}>
-                    <Icon size={12} /> {info.label}
-                  </span>
-                  <span className="text-sm text-muted">
-                    <HiUsers size={14} /> {participantCount}
+              <article key={contest.id} className={`card contest-card contest-card--${status}`}>
+                <div className="contest-card__top">
+                  <Badge tone={info.tone}><Icon size={12} aria-hidden="true" /> {info.label}</Badge>
+                  <span className="contest-card__count">
+                    <HiUsers size={14} aria-hidden="true" /> {participantCount}<span className="sr-only"> participants</span>
                   </span>
                 </div>
 
-                <h3 style={{ marginBottom: 'var(--space-sm)' }}>{contest.title}</h3>
-                <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-md)' }}>
-                  {contest.description?.slice(0, 120) || 'No description'}
-                </p>
+                <h2 className="contest-card__title">{contest.title}</h2>
+                <p className="contest-card__desc">{contest.description?.slice(0, 120) || 'No description'}</p>
 
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <p><strong>Duration:</strong> {contest.duration_minutes} min</p>
-                  <p><strong>Start:</strong> {new Date(contest.start_time).toLocaleString()}</p>
-                </div>
+                <dl className="contest-card__facts">
+                  <div><dt>Duration</dt><dd>{contest.duration_minutes} min</dd></div>
+                  <div><dt>Start</dt><dd>{new Date(contest.start_time).toLocaleString()}</dd></div>
+                </dl>
 
                 {status === 'upcoming' && (
-                  <div style={{ marginTop: 'var(--space-md)', textAlign: 'center' }}>
-                    <p className="text-sm text-muted" style={{ marginBottom: 4 }}>Starts in</p>
+                  <div className="contest-card__clock">
+                    <span className="contest-card__clock-label">Starts in</span>
                     <CountdownTimer targetDate={contest.start_time} />
                   </div>
                 )}
 
                 {status === 'active' && (
-                  <div style={{ marginTop: 'var(--space-md)', textAlign: 'center' }}>
-                    <p className="text-sm text-muted" style={{ marginBottom: 4 }}>Ends in</p>
+                  <div className="contest-card__clock">
+                    <span className="contest-card__clock-label">Ends in</span>
                     <CountdownTimer targetDate={contest.end_time} />
                   </div>
                 )}
 
-                <div style={{ marginTop: 'var(--space-md)' }}>
-                  <button className={`btn btn--sm ${status === 'active' ? 'btn--primary' : 'btn--secondary'}`} style={{ width: '100%' }}>
-                    {status === 'active' ? 'Join Now' : status === 'upcoming' ? 'Register' : 'View Results'}
-                    <HiChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  className={`btn btn--sm contest-card__action ${status === 'active' ? 'btn--primary' : 'btn--secondary'}`}
+                  onClick={() => (status === 'ended' ? router.push(`/contests/${contest.id}`) : handleJoin(contest.id))}
+                >
+                  {action} <HiChevronRight size={14} aria-hidden="true" />
+                  <span className="sr-only">: {contest.title}</span>
+                </button>
+              </article>
             );
           })}
         </div>

@@ -1,6 +1,13 @@
 'use client';
 
+import DailyChallengeCard from '@/components/coding/DailyChallengeCard';
+import DifficultyBadge from '@/components/coding/DifficultyBadge';
+import FilterChips from '@/components/coding/FilterChips';
+import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
+import Table from '@/components/ui/Table';
+import Tabs from '@/components/ui/Tabs';
 import { useAuth } from '@/context/AuthProvider';
 import { useRealtimeProgress } from '@/hooks/useRealtime';
 import { createClient } from '@/lib/supabase/client';
@@ -11,9 +18,7 @@ import toast from 'react-hot-toast';
 import {
     HiBookmark,
     HiCheckCircle,
-    HiChevronRight,
     HiCode,
-    HiFilter,
     HiFire,
     HiLightningBolt,
     HiSearch,
@@ -24,8 +29,22 @@ const CATEGORIES = ['All', 'DSA', 'Python', 'Java', 'SQL', 'WebDev'];
 const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
 const TYPES = ['All', 'code', 'mcq', 'sql', 'project'];
 const TYPE_LABELS = { code: 'Code', mcq: 'MCQ', sql: 'SQL', project: 'Project' };
-const DIFF_COLORS = { Easy: 'var(--success)', Medium: 'var(--warning)', Hard: 'var(--danger)' };
 const CAT_ICONS = { DSA: '🧮', Python: '🐍', Java: '☕', SQL: '🗄️', WebDev: '🌐' };
+
+const CATEGORY_TABS = CATEGORIES.map((c) => ({ id: c, label: c === 'All' ? c : `${CAT_ICONS[c]} ${c}` }));
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d, label: d, tone: d === 'All' ? undefined : d.toLowerCase() }));
+const TYPE_OPTIONS = TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] || 'All' }));
+
+const COLUMNS = [
+  { key: 'num', label: '#', className: 'col-hide-sm' },
+  { key: 'title', label: 'Title' },
+  { key: 'cat', label: 'Category', className: 'col-hide-sm' },
+  { key: 'type', label: 'Type', className: 'col-hide-sm' },
+  { key: 'diff', label: 'Difficulty' },
+  { key: 'pts', label: 'Points', className: 'col-hide-sm' },
+  { key: 'status', label: 'Status' },
+  { key: 'bm', label: 'Bookmark' },
+];
 
 export default function CodingPracticePage() {
   const supabase = createClient();
@@ -160,142 +179,71 @@ export default function CodingPracticePage() {
 
   return (
     <div className="coding animate-fade-in">
-      {/* Header */}
-      <div className="coding__header">
-        <div>
-          <h1><HiCode size={28} /> Coding Practice</h1>
-          <p className="text-muted">Sharpen your skills with curated challenges across multiple categories</p>
+      <PageHeader
+        title="Coding Practice"
+        description="Sharpen your skills with curated challenges across multiple categories."
+      />
+
+      <div className={`coding__top ${dailyChallenge ? 'coding__top--with-daily' : ''}`}>
+        <div className="coding__stats-row">
+          {[
+            { icon: HiCheckCircle, label: 'Solved', value: stats.totalSolved, color: 'var(--success)' },
+            { icon: HiStar, label: 'Score', value: stats.totalScore, color: 'var(--warning)' },
+            { icon: HiFire, label: 'Streak', value: `${profile?.current_streak || 0}d`, color: 'var(--danger)' },
+            { icon: HiLightningBolt, label: 'Completion', value: `${completionPct}%`, color: 'var(--accent-primary)' },
+          ].map(({ icon: Icon, label, value, color }) => (
+            <div key={label} className="card coding__stat-card">
+              <Icon size={20} color={color} aria-hidden="true" />
+              <div className="coding__stat-value" style={{ color }}>{value}</div>
+              <div className="coding__stat-label">{label}</div>
+            </div>
+          ))}
         </div>
+        <DailyChallengeCard challenge={dailyChallenge} />
       </div>
 
-      {/* Stats Cards */}
-      <div className={`coding__stats-row ${dailyChallenge ? 'coding__stats-row--with-daily' : ''}`}>
-        {[
-          { icon: HiCheckCircle, label: 'Solved', value: stats.totalSolved, color: 'var(--success)' },
-          { icon: HiStar, label: 'Score', value: stats.totalScore, color: 'var(--warning)' },
-          { icon: HiFire, label: 'Streak', value: `${profile?.current_streak || 0}d`, color: 'var(--danger)' },
-          { icon: HiLightningBolt, label: 'Completion', value: `${completionPct}%`, color: 'var(--accent-primary)' },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="card coding__stat-card">
-            <Icon size={20} color={color} />
-            <div className="coding__stat-value" style={{ color }}>{value}</div>
-            <div className="coding__stat-label">{label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Daily Challenge (only if available) */}
-      {dailyChallenge && (
-        <Link href={`/coding/${dailyChallenge.slug || dailyChallenge.id}`} className="card coding__daily-card">
-          <div className="coding__daily-badge">🔥 Daily Challenge</div>
-          <h3 style={{ margin: '8px 0 4px' }}>{dailyChallenge.title}</h3>
-          <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-            <span className="badge" style={{
-              background: `${DIFF_COLORS[dailyChallenge.difficulty]}22`,
-              color: DIFF_COLORS[dailyChallenge.difficulty],
-            }}>
-              {dailyChallenge.difficulty}
-            </span>
-            <span className="text-sm text-muted">{dailyChallenge.category}</span>
-            <span className="text-sm" style={{ color: 'var(--warning)' }}>+{dailyChallenge.points || 10} pts</span>
-          </div>
-        </Link>
-      )}
-
-      {/* Difficulty Breakdown */}
       {user && stats.totalSolved > 0 && (
         <div className="card coding__progress-bar-card">
           <div className="flex-between" style={{ marginBottom: 8 }}>
-            <span className="text-sm" style={{ fontWeight: 600 }}>Progress by Difficulty</span>
+            <span className="text-sm" style={{ fontWeight: 600 }}>Progress by difficulty</span>
             <span className="text-sm text-muted">{stats.totalSolved} solved</span>
           </div>
           <div className="coding__progress-bar">
-            {stats.byDifficulty.Easy > 0 && (
+            {['Easy', 'Medium', 'Hard'].map((d) => stats.byDifficulty[d] > 0 && (
               <div
-                className="coding__progress-segment coding__progress-segment--easy"
-                style={{ flex: stats.byDifficulty.Easy }}
-                title={`Easy: ${stats.byDifficulty.Easy}`}
+                key={d}
+                className={`coding__progress-segment coding__progress-segment--${d.toLowerCase()}`}
+                style={{ flex: stats.byDifficulty[d] }}
+                title={`${d}: ${stats.byDifficulty[d]}`}
               />
-            )}
-            {stats.byDifficulty.Medium > 0 && (
-              <div
-                className="coding__progress-segment coding__progress-segment--medium"
-                style={{ flex: stats.byDifficulty.Medium }}
-                title={`Medium: ${stats.byDifficulty.Medium}`}
-              />
-            )}
-            {stats.byDifficulty.Hard > 0 && (
-              <div
-                className="coding__progress-segment coding__progress-segment--hard"
-                style={{ flex: stats.byDifficulty.Hard }}
-                title={`Hard: ${stats.byDifficulty.Hard}`}
-              />
-            )}
+            ))}
           </div>
-          <div className="flex gap-md" style={{ marginTop: 6 }}>
-            <span className="text-sm" style={{ color: 'var(--success)' }}>● Easy: {stats.byDifficulty.Easy || 0}</span>
-            <span className="text-sm" style={{ color: 'var(--warning)' }}>● Medium: {stats.byDifficulty.Medium || 0}</span>
-            <span className="text-sm" style={{ color: 'var(--danger)' }}>● Hard: {stats.byDifficulty.Hard || 0}</span>
+          <div className="coding__legend">
+            <span className="coding__legend-item coding__legend-item--easy">Easy: {stats.byDifficulty.Easy || 0}</span>
+            <span className="coding__legend-item coding__legend-item--medium">Medium: {stats.byDifficulty.Medium || 0}</span>
+            <span className="coding__legend-item coding__legend-item--hard">Hard: {stats.byDifficulty.Hard || 0}</span>
           </div>
         </div>
       )}
 
-      {/* Category Tabs */}
-      <div className="coding__category-tabs">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            className={`coding__category-tab ${category === cat ? 'coding__category-tab--active' : ''}`}
-            onClick={() => setCategory(cat)}
-          >
-            {cat !== 'All' && <span>{CAT_ICONS[cat]}</span>}
-            {cat}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={CATEGORY_TABS} value={category} onChange={setCategory} label="Category" />
 
-      {/* Filters Row */}
-      <div className="card coding__filters">
-        <div className="flex gap-md" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-            <HiSearch size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }} />
-            <input
-              className="input"
-              placeholder="Search problems..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: 38 }}
-            />
-          </div>
-          <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-            <HiFilter size={16} className="text-muted" />
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d}
-                className={`btn btn--sm ${difficulty === d ? 'btn--primary' : 'btn--ghost'}`}
-                onClick={() => setDifficulty(d)}
-                style={d !== 'All' && difficulty === d ? { background: DIFF_COLORS[d] } : {}}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-sm">
-            {TYPES.map((t) => (
-              <button
-                key={t}
-                className={`btn btn--sm ${type === t ? 'btn--secondary' : 'btn--ghost'}`}
-                onClick={() => setType(t)}
-                style={type === t ? { borderColor: 'var(--accent-primary)' } : {}}
-              >
-                {TYPE_LABELS[t] || 'All Types'}
-              </button>
-            ))}
-          </div>
+      <div className="filters-panel">
+        <div className="filters-panel__search">
+          <HiSearch size={18} aria-hidden="true" />
+          <input
+            className="input"
+            type="search"
+            aria-label="Search problems"
+            placeholder="Search problems..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
+        <FilterChips label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
+        <FilterChips label="Type" options={TYPE_OPTIONS} value={type} onChange={setType} />
       </div>
 
-      {/* Problem List */}
       {loading ? (
         <div className="loading-container"><div className="spinner" /></div>
       ) : problems.length === 0 ? (
@@ -305,90 +253,64 @@ export default function CodingPracticePage() {
           message={
             error
               ? `Could not load problems: ${error}. Make sure your Supabase database has the table 'coding_problems' and a public SELECT policy.`
-              : 'No coding problems in the database yet. Seed the coding_problems table (or add problems as admin), then refresh.'
+              : 'No coding problems match these filters, or none have been added yet.'
           }
         />
       ) : (
-        <div className="coding__problems">
-          {/* Table header */}
-          <div className="problem-row problem-row--header">
-            <span className="problem-row__num">#</span>
-            <span className="problem-row__title">Title</span>
-            <span className="problem-row__cat">Category</span>
-            <span className="problem-row__type">Type</span>
-            <span className="problem-row__diff">Difficulty</span>
-            <span className="problem-row__pts">Points</span>
-            <span className="problem-row__status">Status</span>
-            <span className="problem-row__actions"></span>
-          </div>
-
+        <Table caption="Coding problems" columns={COLUMNS} className="problem-table">
           {problems.map((p, i) => {
             const status = solvedMap[p.id];
+            const bookmarked = bookmarkSet.has(p.id);
+            const href = `/coding/${p.slug || p.id}`;
             return (
-              <div
+              <tr
                 key={p.id}
-                className={`problem-row ${status === 'solved' ? 'problem-row--solved' : ''}`}
-                onClick={() => router.push(`/coding/${p.slug || p.id}`)}
-                role="button"
-                tabIndex={0}
+                className={`problem-tr ${status === 'solved' ? 'problem-tr--solved' : ''}`}
+                onClick={() => router.push(href)}
               >
-                <span className="problem-row__num">{i + 1}</span>
-                <span className="problem-row__title">
-                  <strong>{p.title}</strong>
+                <td className="col-hide-sm problem-tr__num">{i + 1}</td>
+                <td>
+                  <Link href={href} className="table__primary problem-tr__link" onClick={(e) => e.stopPropagation()}>
+                    {p.title}
+                  </Link>
                   {p.tags?.length > 0 && (
-                    <div className="flex gap-xs" style={{ marginTop: 4, flexWrap: 'wrap' }}>
+                    <span className="problem-tr__tags">
                       {p.tags.slice(0, 3).map((tag) => (
                         <span key={tag} className="badge badge--tag">{tag}</span>
                       ))}
-                    </div>
+                    </span>
                   )}
-                </span>
-                <span className="problem-row__cat">
-                  <span className="badge badge--cat">
-                    {CAT_ICONS[p.category] || '📁'} {p.category}
-                  </span>
-                </span>
-                <span className="problem-row__type">
-                  <span className="text-sm text-muted">{TYPE_LABELS[p.type] || p.type}</span>
-                </span>
-                <span className="problem-row__diff">
-                  <span className="badge" style={{
-                    background: `${DIFF_COLORS[p.difficulty]}22`,
-                    color: DIFF_COLORS[p.difficulty],
-                    border: `1px solid ${DIFF_COLORS[p.difficulty]}44`,
-                  }}>
-                    {p.difficulty}
-                  </span>
-                </span>
-                <span className="problem-row__pts">
-                  <span className="text-sm" style={{ color: 'var(--warning)', fontWeight: 600 }}>
-                    {p.points || 10}
-                  </span>
-                </span>
-                <span className="problem-row__status">
+                </td>
+                <td className="col-hide-sm">
+                  <span className="badge badge--cat">{CAT_ICONS[p.category] || '📁'} {p.category}</span>
+                </td>
+                <td className="col-hide-sm">{TYPE_LABELS[p.type] || p.type}</td>
+                <td><DifficultyBadge difficulty={p.difficulty} /></td>
+                <td className="col-hide-sm problem-tr__pts">{p.points || 10}</td>
+                <td>
                   {status === 'solved' ? (
-                    <HiCheckCircle size={20} color="var(--success)" />
+                    <Badge tone="success"><HiCheckCircle size={14} aria-hidden="true" /> Solved</Badge>
                   ) : status === 'attempted' ? (
-                    <span style={{ color: 'var(--warning)', fontSize: '0.75rem', fontWeight: 600 }}>Tried</span>
+                    <Badge tone="warning">Attempted</Badge>
                   ) : (
-                    <span className="text-muted text-sm">—</span>
+                    <span className="text-muted"><span aria-hidden="true">—</span><span className="sr-only">Not attempted</span></span>
                   )}
-                </span>
-                <span className="problem-row__actions">
+                </td>
+                <td>
                   <button
-                    className="btn btn--ghost btn--sm"
+                    type="button"
+                    className={`bookmark-btn ${bookmarked ? 'bookmark-btn--on' : ''}`}
+                    aria-pressed={bookmarked}
+                    aria-label={`${bookmarked ? 'Remove bookmark from' : 'Bookmark'} ${p.title}`}
                     onClick={(e) => toggleBookmark(e, p.id)}
-                    title={bookmarkSet.has(p.id) ? 'Remove bookmark' : 'Bookmark'}
-                    style={{ padding: 4, minWidth: 0 }}
                   >
-                    <HiBookmark size={16} color={bookmarkSet.has(p.id) ? 'var(--accent-primary)' : 'var(--text-muted)'} />
+                    <HiBookmark size={18} aria-hidden="true" />
                   </button>
-                  <HiChevronRight size={16} color="var(--text-muted)" />
-                </span>
-              </div>
+                </td>
+              </tr>
             );
           })}
-        </div>
+        </Table>
       )}
     </div>
   );

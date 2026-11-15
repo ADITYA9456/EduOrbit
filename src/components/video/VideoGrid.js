@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/ui/EmptyState';
 import VideoCard, { VideoCardSkeleton } from './VideoCard';
 
 export default function VideoGrid({ videos = [], loading = false }) {
@@ -14,11 +15,7 @@ export default function VideoGrid({ videos = [], loading = false }) {
   }
 
   if (!videos.length) {
-    return (
-      <div className="loading-container">
-        <p className="text-muted">No videos found</p>
-      </div>
-    );
+    return <EmptyState title="No videos found" message="Try another category or a different search." />;
   }
 
   return (

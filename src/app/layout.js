@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 import './premium.css';
+import './learn.css';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,10 +1,11 @@
 'use client';
 
+import GlassPanel from '@/components/ui/GlassPanel';
 import { formatCount, timeAgo } from '@/lib/utils';
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
 import { HiExternalLink, HiPlay } from 'react-icons/hi';
-import { HiSparkles } from 'react-icons/hi2';
+import { HiBookOpen, HiHashtag, HiSparkles } from 'react-icons/hi2';
 
 function generateSummary(video) {
   if (!video) return null;
@@ -23,7 +24,7 @@ function generateSummary(video) {
 
   // Extract timestamps from description
   const timestamps = [];
-  const tsRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]?\s*(.+)/g;
+  const tsRegex = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014]?\s*(.+)/g;
   let match;
   while ((match = tsRegex.exec(desc)) !== null && timestamps.length < 8) {
     timestamps.push({ time: match[1], label: match[2].trim().slice(0, 60) });
@@ -45,7 +46,8 @@ function generateSummary(video) {
   return { summaryLines, timestamps, topics };
 }
 
-export default function AISummaryPanel({ video }) {
+// compact: used beside the player, so the preview and watch actions are dropped.
+export default function AISummaryPanel({ video, compact = false }) {
   const summary = useMemo(() => generateSummary(video), [video]);
   const [imgError, setImgError] = useState(false);
 
@@ -59,13 +61,13 @@ export default function AISummaryPanel({ video }) {
 
   if (!video) {
     return (
-      <div className="ai-panel ai-panel--empty">
+      <GlassPanel as="aside" padded={false} className="ai-panel ai-panel--empty" aria-label="AI video summary">
         <div className="ai-panel__empty-icon">
-          <HiSparkles size={48} />
+          <HiSparkles size={48} aria-hidden="true" />
         </div>
         <h3>AI Video Summary</h3>
         <p>Select a video from the list to see its AI-powered summary and key insights.</p>
-      </div>
+      </GlassPanel>
     );
   }
 
@@ -73,45 +75,49 @@ export default function AISummaryPanel({ video }) {
   const views = video.view_count || 0;
 
   return (
-    <div className="ai-panel animate-fade-in">
-      {/* Preview */}
-      <Link href={`/video/${videoId}`} className="ai-panel__preview">
-        {thumbnail && !imgError ? (
-          <img
-            src={thumbnail}
-            alt={video.title}
-            onError={() => setImgError(true)}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : null}
-        <div className="ai-panel__play-overlay">
-          <div className="ai-panel__play-btn">
-            <HiPlay size={32} />
+    <GlassPanel
+      as="aside"
+      padded={false}
+      className={`ai-panel animate-fade-in${compact ? ' ai-panel--compact' : ''}`}
+      aria-label="AI video summary"
+    >
+      {!compact && (
+        <Link href={`/video/${videoId}`} className="ai-panel__preview" aria-label={`Watch ${video.title}`}>
+          {thumbnail && !imgError ? (
+            <img
+              src={thumbnail}
+              alt=""
+              onError={() => setImgError(true)}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : null}
+          <div className="ai-panel__play-overlay">
+            <div className="ai-panel__play-btn">
+              <HiPlay size={32} aria-hidden="true" />
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {!compact && (
+        <div className="ai-panel__header">
+          <h3 className="ai-panel__title">{video.title}</h3>
+          <div className="ai-panel__meta">
+            {video.channel_title && <span className="ai-panel__channel">{video.channel_title}</span>}
+            {views > 0 && <span>{formatCount(views)} views</span>}
+            {video.published_at && <span>{timeAgo(video.published_at)}</span>}
           </div>
         </div>
-      </Link>
+      )}
 
-      {/* Title & info */}
-      <div className="ai-panel__header">
-        <h3 className="ai-panel__title">{video.title}</h3>
-        <div className="ai-panel__meta">
-          {video.channel_title && <span className="ai-panel__channel">{video.channel_title}</span>}
-          {views > 0 && <span>{formatCount(views)} views</span>}
-          {video.published_at && <span>{timeAgo(video.published_at)}</span>}
-        </div>
-      </div>
-
-      {/* AI Summary */}
       <div className="ai-panel__section">
         <div className="ai-panel__section-header">
-          <HiSparkles size={16} />
+          <HiSparkles size={16} aria-hidden="true" />
           <span>AI Summary</span>
         </div>
         <div className="ai-panel__summary">
           {summary?.summaryLines?.length > 0 ? (
-            summary.summaryLines.map((line, i) => (
-              <p key={i}>{line}</p>
-            ))
+            summary.summaryLines.map((line, i) => <p key={i}>{line}</p>)
           ) : (
             <p className="text-muted">
               This video covers &ldquo;{video.title}&rdquo;
@@ -122,11 +128,10 @@ export default function AISummaryPanel({ video }) {
         </div>
       </div>
 
-      {/* Timestamps */}
       {summary?.timestamps?.length > 0 && (
         <div className="ai-panel__section">
           <div className="ai-panel__section-header">
-            <span>📋</span>
+            <HiBookOpen size={16} aria-hidden="true" />
             <span>Chapters</span>
           </div>
           <div className="ai-panel__timestamps" tabIndex={0} role="region" aria-label="Video timestamps">
@@ -140,11 +145,10 @@ export default function AISummaryPanel({ video }) {
         </div>
       )}
 
-      {/* Key Topics */}
       {summary?.topics?.length > 0 && (
         <div className="ai-panel__section">
           <div className="ai-panel__section-header">
-            <span>🏷️</span>
+            <HiHashtag size={16} aria-hidden="true" />
             <span>Key Topics</span>
           </div>
           <div className="ai-panel__topics">
@@ -155,20 +159,21 @@ export default function AISummaryPanel({ video }) {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="ai-panel__actions">
-        <Link href={`/video/${videoId}`} className="btn btn--primary btn--sm" style={{ flex: 1 }}>
-          <HiPlay size={16} /> Watch Now
-        </Link>
-        <a
-          href={`https://youtube.com/watch?v=${videoId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn--secondary btn--sm"
-        >
-          <HiExternalLink size={16} /> YouTube
-        </a>
-      </div>
-    </div>
+      {!compact && (
+        <div className="ai-panel__actions">
+          <Link href={`/video/${videoId}`} className="btn btn--primary btn--sm" style={{ flex: 1 }}>
+            <HiPlay size={16} aria-hidden="true" /> Watch Now
+          </Link>
+          <a
+            href={`https://youtube.com/watch?v=${videoId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn--secondary btn--sm"
+          >
+            <HiExternalLink size={16} aria-hidden="true" /> YouTube
+          </a>
+        </div>
+      )}
+    </GlassPanel>
   );
 }
