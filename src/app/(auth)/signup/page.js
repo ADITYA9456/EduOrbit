@@ -3,7 +3,9 @@
 import { useAuth } from '@/context/AuthProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import AuthField from '@/components/auth/AuthField';
+import GlassPanel from '@/components/ui/GlassPanel';
+import { useRef, useState } from 'react';
 import { HiAtSymbol, HiLockClosed, HiMail, HiPhone, HiUser } from 'react-icons/hi';
 
 export default function SignupPage() {
@@ -18,15 +20,52 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [flagged, setFlagged] = useState([]);
+
+  const refs = {
+    fullName: useRef(null), username: useRef(null), email: useRef(null),
+    password: useRef(null), confirmPassword: useRef(null), phone: useRef(null), otp: useRef(null),
+  };
+
+  const clearErrors = () => {
+    setError('');
+    setFieldErrors({});
+    setFlagged([]);
+  };
+
+  // Show field-level errors and move focus to the first invalid field (in form order).
+  const failFields = (errors, order) => {
+    setFieldErrors(errors);
+    setFlagged([]);
+    const first = order.find((name) => errors[name]);
+    if (first) refs[first].current?.focus();
+  };
+
+  // Show a form-level error, flag the given fields and focus the first one.
+  const failForm = (message, names) => {
+    setError(message);
+    setFlagged(names);
+    refs[names[0]].current?.focus();
+  };
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const EMAIL_ORDER = ['fullName', 'username', 'email', 'password', 'confirmPassword'];
+
   const handleEmailSignup = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
 
-    if (form.password.length < 6) return setError('Password must be at least 6 characters');
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match');
+    const errors = {};
+    if (!form.fullName.trim()) errors.fullName = 'Enter your full name';
+    if (!form.username.trim()) errors.username = 'Choose a username';
+    if (!form.email.trim()) errors.email = 'Enter your email address';
+    if (!form.password) errors.password = 'Choose a password';
+    else if (form.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (!form.confirmPassword) errors.confirmPassword = 'Confirm your password';
+    else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match';
+    if (Object.keys(errors).length) return failFields(errors, EMAIL_ORDER);
 
     setLoading(true);
     try {
@@ -36,7 +75,7 @@ export default function SignupPage() {
       });
       setSuccess('Account created! Please check your email to confirm your account.');
     } catch (err) {
-      setError(err.message || 'Signup failed');
+      failForm(err.message || 'Signup failed', ['email', 'username']);
     } finally {
       setLoading(false);
     }
@@ -44,10 +83,10 @@ export default function SignupPage() {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
     setSuccess('');
     if (!phone || phone.length < 10) {
-      return setError('Please enter a valid phone number with country code (e.g. +91...)');
+      return failFields({ phone: 'Please enter a valid phone number with country code (e.g. +91...)' }, ['phone']);
     }
     setLoading(true);
     try {
@@ -55,7 +94,7 @@ export default function SignupPage() {
       setOtpSent(true);
       setSuccess('OTP sent! Check your phone.');
     } catch (err) {
-      setError(err.message || 'Failed to send OTP');
+      failForm(err.message || 'Failed to send OTP', ['phone']);
     } finally {
       setLoading(false);
     }
@@ -63,24 +102,24 @@ export default function SignupPage() {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
     setSuccess('');
     if (!otp || otp.length !== 6) {
-      return setError('Please enter the 6-digit OTP');
+      return failFields({ otp: 'Please enter the 6-digit OTP' }, ['otp']);
     }
     setLoading(true);
     try {
       await verifyPhoneOtp(phone, otp);
       router.push('/home');
     } catch (err) {
-      setError(err.message || 'Invalid OTP');
+      failForm(err.message || 'Invalid OTP', ['otp']);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignup = async () => {
-    setError('');
+    clearErrors();
     try {
       await signInWithGoogle();
     } catch (err) {
@@ -88,9 +127,15 @@ export default function SignupPage() {
     }
   };
 
+  const switchMethod = (method) => {
+    setAuthMethod(method);
+    clearErrors();
+    setSuccess('');
+    if (method === 'phone') setOtpSent(false);
+  };
   return (
     <div className="auth-page">
-      <div className="auth-card">
+      <GlassPanel className="auth-card" padded={false}>
         <div className="auth-card__header">
           <div className="auth-card__logo"><span className="logo-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" /></svg></span></div>
           <h1 className="auth-card__title">Create Account</h1>
@@ -119,14 +164,14 @@ export default function SignupPage() {
           <button
             type="button"
             className={`auth-tab ${authMethod === 'email' ? 'auth-tab--active' : ''}`}
-            onClick={() => { setAuthMethod('email'); setError(''); setSuccess(''); }}
+            onClick={() => switchMethod('email')}
           >
             <HiMail size={16} /> Email
           </button>
           <button
             type="button"
             className={`auth-tab ${authMethod === 'phone' ? 'auth-tab--active' : ''}`}
-            onClick={() => { setAuthMethod('phone'); setError(''); setSuccess(''); setOtpSent(false); }}
+            onClick={() => switchMethod('phone')}
           >
             <HiPhone size={16} /> Phone
           </button>
@@ -134,47 +179,37 @@ export default function SignupPage() {
 
         {/* Email Signup Form */}
         {authMethod === 'email' && (
-          <form className="auth-form" onSubmit={handleEmailSignup}>
-            <div className="form-group">
-              <label htmlFor="f-full-name-1">Full Name</label>
-              <div className="input-wrapper">
-                <HiUser className="input-icon" size={18} />
-                <input id="f-full-name-1" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="fullName" placeholder="John Doe" value={form.fullName} onChange={handleChange} required />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="f-username-2">Username</label>
-              <div className="input-wrapper">
-                <HiAtSymbol className="input-icon" size={18} />
-                <input id="f-username-2" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="username" placeholder="johndoe" value={form.username} onChange={handleChange} required />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="f-email-3">Email</label>
-              <div className="input-wrapper">
-                <HiMail className="input-icon" size={18} />
-                <input id="f-email-3" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="email" type="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="f-password-4">Password</label>
-              <div className="input-wrapper">
-                <HiLockClosed className="input-icon" size={18} />
-                <input id="f-password-4" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} required />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="f-confirm-password-5">Confirm Password</label>
-              <div className="input-wrapper">
-                <HiLockClosed className="input-icon" size={18} />
-                <input id="f-confirm-password-5" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} required />
-              </div>
-            </div>
-
+          <form className="auth-form" onSubmit={handleEmailSignup} noValidate>
+            <AuthField
+              id="signup-full-name" label="Full Name" icon={HiUser} ref={refs.fullName}
+              name="fullName" autoComplete="name" placeholder="John Doe"
+              value={form.fullName} onChange={handleChange}
+              required error={fieldErrors.fullName} invalid={flagged.includes('fullName')} formErrorId="auth-error"
+            />
+            <AuthField
+              id="signup-username" label="Username" icon={HiAtSymbol} ref={refs.username}
+              name="username" autoComplete="username" placeholder="johndoe"
+              value={form.username} onChange={handleChange}
+              required error={fieldErrors.username} invalid={flagged.includes('username')} formErrorId="auth-error"
+            />
+            <AuthField
+              id="signup-email" label="Email" icon={HiMail} ref={refs.email}
+              name="email" type="email" autoComplete="email" placeholder="you@example.com"
+              value={form.email} onChange={handleChange}
+              required error={fieldErrors.email} invalid={flagged.includes('email')} formErrorId="auth-error"
+            />
+            <AuthField
+              id="signup-password" label="Password" icon={HiLockClosed} ref={refs.password}
+              name="password" type="password" autoComplete="new-password" placeholder="••••••••"
+              value={form.password} onChange={handleChange}
+              required error={fieldErrors.password} invalid={flagged.includes('password')} formErrorId="auth-error"
+            />
+            <AuthField
+              id="signup-confirm-password" label="Confirm Password" icon={HiLockClosed} ref={refs.confirmPassword}
+              name="confirmPassword" type="password" autoComplete="new-password" placeholder="••••••••"
+              value={form.confirmPassword} onChange={handleChange}
+              required error={fieldErrors.confirmPassword} invalid={flagged.includes('confirmPassword')} formErrorId="auth-error"
+            />
             <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
@@ -185,49 +220,34 @@ export default function SignupPage() {
         {authMethod === 'phone' && (
           <>
             {!otpSent ? (
-              <form className="auth-form" onSubmit={handleSendOtp}>
-                <div className="form-group">
-                  <label htmlFor="f-phone-number-6">Phone Number</label>
-                  <div className="input-wrapper">
-                    <HiPhone className="input-icon" size={18} />
-                    <input id="f-phone-number-6" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                      className="input input--with-icon"
-                      type="tel"
-                      placeholder="+91 9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <span className="form-hint">Include country code (e.g. +91 for India)</span>
-                </div>
+              <form className="auth-form" onSubmit={handleSendOtp} noValidate>
+                <AuthField
+                  id="signup-phone" label="Phone Number" icon={HiPhone} ref={refs.phone}
+                  type="tel" autoComplete="tel" placeholder="+91 9876543210"
+                  value={phone} onChange={(e) => setPhone(e.target.value)}
+                  required error={fieldErrors.phone} invalid={flagged.includes('phone')} formErrorId="auth-error"
+                  hint="Include country code (e.g. +91 for India)"
+                />
                 <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
                   {loading ? 'Sending OTP...' : 'Send OTP'}
                 </button>
               </form>
             ) : (
-              <form className="auth-form" onSubmit={handleVerifyOtp}>
-                <div className="form-group">
-                  <label htmlFor="f-enter-otp-7">Enter OTP</label>
-                  <div className="otp-input-group">
-                    <input id="f-enter-otp-7" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                      className="input otp-input"
-                      type="text"
-                      maxLength={6}
-                      placeholder="000000"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <span className="form-hint">
-                    Sent to {phone} &middot;{' '}
-                    <button type="button" className="link-btn" onClick={() => { setOtpSent(false); setOtp(''); }}>
-                      Change number
-                    </button>
-                  </span>
-                </div>
+              <form className="auth-form" onSubmit={handleVerifyOtp} noValidate>
+                <AuthField
+                  id="signup-otp" label="Enter OTP" ref={refs.otp} inputClassName="otp-input"
+                  type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000"
+                  value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required autoFocus error={fieldErrors.otp} invalid={flagged.includes('otp')} formErrorId="auth-error"
+                  hint={
+                    <>
+                      Sent to {phone} &middot;{' '}
+                      <button type="button" className="link-btn" onClick={() => { setOtpSent(false); setOtp(''); clearErrors(); }}>
+                        Change number
+                      </button>
+                    </>
+                  }
+                />
                 <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
                   {loading ? 'Verifying...' : 'Verify & Create Account'}
                 </button>
@@ -235,12 +255,11 @@ export default function SignupPage() {
             )}
           </>
         )}
-
         <div className="auth-card__footer">
           Already have an account?{' '}
           <Link href="/login">Sign In</Link>
         </div>
-      </div>
+      </GlassPanel>
     </div>
   );
 }

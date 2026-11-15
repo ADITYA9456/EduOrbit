@@ -3,7 +3,9 @@
 import { useAuth } from '@/context/AuthProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import AuthField from '@/components/auth/AuthField';
+import GlassPanel from '@/components/ui/GlassPanel';
+import { useRef, useState } from 'react';
 import { HiLockClosed, HiMail, HiPhone } from 'react-icons/hi';
 
 export default function LoginPage() {
@@ -19,16 +21,45 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [flagged, setFlagged] = useState([]);
+
+  const refs = { email: useRef(null), password: useRef(null), phone: useRef(null), otp: useRef(null) };
+
+  const clearErrors = () => {
+    setError('');
+    setFieldErrors({});
+    setFlagged([]);
+  };
+
+  // Show field-level errors and move focus to the first invalid field.
+  const failFields = (errors) => {
+    setFieldErrors(errors);
+    setFlagged([]);
+    const first = Object.keys(errors)[0];
+    if (first) refs[first].current?.focus();
+  };
+
+  // Show a form-level error, flag the given fields and focus the first one.
+  const failForm = (message, names) => {
+    setError(message);
+    setFlagged(names);
+    refs[names[0]].current?.focus();
+  };
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
+    const errors = {};
+    if (!email.trim()) errors.email = 'Enter your email address';
+    if (!password) errors.password = 'Enter your password';
+    if (Object.keys(errors).length) return failFields(errors);
     setLoading(true);
     try {
       await signIn(email, password);
       router.push('/home');
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      failForm(err.message || 'Invalid email or password', ['email', 'password']);
     } finally {
       setLoading(false);
     }
@@ -36,10 +67,10 @@ export default function LoginPage() {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
     setSuccess('');
     if (!phone || phone.length < 10) {
-      return setError('Please enter a valid phone number with country code (e.g. +91...)');
+      return failFields({ phone: 'Please enter a valid phone number with country code (e.g. +91...)' });
     }
     setLoading(true);
     try {
@@ -47,7 +78,7 @@ export default function LoginPage() {
       setOtpSent(true);
       setSuccess('OTP sent! Check your phone.');
     } catch (err) {
-      setError(err.message || 'Failed to send OTP');
+      failForm(err.message || 'Failed to send OTP', ['phone']);
     } finally {
       setLoading(false);
     }
@@ -55,24 +86,24 @@ export default function LoginPage() {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
     setSuccess('');
     if (!otp || otp.length !== 6) {
-      return setError('Please enter the 6-digit OTP');
+      return failFields({ otp: 'Please enter the 6-digit OTP' });
     }
     setLoading(true);
     try {
       await verifyPhoneOtp(phone, otp);
       router.push('/home');
     } catch (err) {
-      setError(err.message || 'Invalid OTP');
+      failForm(err.message || 'Invalid OTP', ['otp']);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
+    clearErrors();
     try {
       await signInWithGoogle();
     } catch (err) {
@@ -80,9 +111,15 @@ export default function LoginPage() {
     }
   };
 
+  const switchMethod = (method) => {
+    setAuthMethod(method);
+    clearErrors();
+    setSuccess('');
+    if (method === 'phone') setOtpSent(false);
+  };
   return (
     <div className="auth-page">
-      <div className="auth-card">
+      <GlassPanel className="auth-card" padded={false}>
         <div className="auth-card__header">
           <div className="auth-card__logo"><span className="logo-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" /></svg></span></div>
           <h1 className="auth-card__title">Welcome Back</h1>
@@ -111,14 +148,14 @@ export default function LoginPage() {
           <button
             type="button"
             className={`auth-tab ${authMethod === 'email' ? 'auth-tab--active' : ''}`}
-            onClick={() => { setAuthMethod('email'); setError(''); setSuccess(''); }}
+            onClick={() => switchMethod('email')}
           >
             <HiMail size={16} /> Email
           </button>
           <button
             type="button"
             className={`auth-tab ${authMethod === 'phone' ? 'auth-tab--active' : ''}`}
-            onClick={() => { setAuthMethod('phone'); setError(''); setSuccess(''); setOtpSent(false); }}
+            onClick={() => switchMethod('phone')}
           >
             <HiPhone size={16} /> Phone
           </button>
@@ -126,37 +163,19 @@ export default function LoginPage() {
 
         {/* Email Login Form */}
         {authMethod === 'email' && (
-          <form className="auth-form" onSubmit={handleEmailLogin}>
-            <div className="form-group">
-              <label htmlFor="f-email-1">Email</label>
-              <div className="input-wrapper">
-                <HiMail className="input-icon" size={18} />
-                <input id="f-email-1" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                  className="input input--with-icon"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="f-password-2">Password</label>
-              <div className="input-wrapper">
-                <HiLockClosed className="input-icon" size={18} />
-                <input id="f-password-2" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                  className="input input--with-icon"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
+          <form className="auth-form" onSubmit={handleEmailLogin} noValidate>
+            <AuthField
+              id="login-email" label="Email" icon={HiMail} ref={refs.email}
+              type="email" autoComplete="email" placeholder="you@example.com"
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              required error={fieldErrors.email} invalid={flagged.includes('email')} formErrorId="auth-error"
+            />
+            <AuthField
+              id="login-password" label="Password" icon={HiLockClosed} ref={refs.password}
+              type="password" autoComplete="current-password" placeholder="••••••••"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              required error={fieldErrors.password} invalid={flagged.includes('password')} formErrorId="auth-error"
+            />
             <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -167,49 +186,34 @@ export default function LoginPage() {
         {authMethod === 'phone' && (
           <>
             {!otpSent ? (
-              <form className="auth-form" onSubmit={handleSendOtp}>
-                <div className="form-group">
-                  <label htmlFor="f-phone-number-3">Phone Number</label>
-                  <div className="input-wrapper">
-                    <HiPhone className="input-icon" size={18} />
-                    <input id="f-phone-number-3" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                      className="input input--with-icon"
-                      type="tel"
-                      placeholder="+91 9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <span className="form-hint">Include country code (e.g. +91 for India)</span>
-                </div>
+              <form className="auth-form" onSubmit={handleSendOtp} noValidate>
+                <AuthField
+                  id="login-phone" label="Phone Number" icon={HiPhone} ref={refs.phone}
+                  type="tel" autoComplete="tel" placeholder="+91 9876543210"
+                  value={phone} onChange={(e) => setPhone(e.target.value)}
+                  required error={fieldErrors.phone} invalid={flagged.includes('phone')} formErrorId="auth-error"
+                  hint="Include country code (e.g. +91 for India)"
+                />
                 <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
                   {loading ? 'Sending OTP...' : 'Send OTP'}
                 </button>
               </form>
             ) : (
-              <form className="auth-form" onSubmit={handleVerifyOtp}>
-                <div className="form-group">
-                  <label htmlFor="f-enter-otp-4">Enter OTP</label>
-                  <div className="otp-input-group">
-                    <input id="f-enter-otp-4" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
-                      className="input otp-input"
-                      type="text"
-                      maxLength={6}
-                      placeholder="000000"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      required
-                      autoFocus
-                    />
-                  </div>
-                  <span className="form-hint">
-                    Sent to {phone} &middot;{' '}
-                    <button type="button" className="link-btn" onClick={() => { setOtpSent(false); setOtp(''); }}>
-                      Change number
-                    </button>
-                  </span>
-                </div>
+              <form className="auth-form" onSubmit={handleVerifyOtp} noValidate>
+                <AuthField
+                  id="login-otp" label="Enter OTP" ref={refs.otp} inputClassName="otp-input"
+                  type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000"
+                  value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required autoFocus error={fieldErrors.otp} invalid={flagged.includes('otp')} formErrorId="auth-error"
+                  hint={
+                    <>
+                      Sent to {phone} &middot;{' '}
+                      <button type="button" className="link-btn" onClick={() => { setOtpSent(false); setOtp(''); clearErrors(); }}>
+                        Change number
+                      </button>
+                    </>
+                  }
+                />
                 <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
                   {loading ? 'Verifying...' : 'Verify & Sign In'}
                 </button>
@@ -217,12 +221,11 @@ export default function LoginPage() {
             )}
           </>
         )}
-
         <div className="auth-card__footer">
           Don&apos;t have an account?{' '}
           <Link href="/signup">Sign Up</Link>
         </div>
-      </div>
+      </GlassPanel>
     </div>
   );
 }

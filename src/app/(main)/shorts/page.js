@@ -2,7 +2,8 @@
 
 import AISummaryPanel from '@/components/video/AISummaryPanel';
 import CategoryPills from '@/components/video/CategoryPills';
-import VideoListItem, { VideoListItemSkeleton } from '@/components/video/VideoListItem';
+import EmptyState from '@/components/ui/EmptyState';
+import ShortsTile, { ShortsTileSkeleton } from '@/components/video/ShortsTile';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -145,32 +146,31 @@ export default function ShortsPage() {
 
       <CategoryPills active={category} onChange={handleCategoryChange} />
 
-      <div className="home-split" style={{ marginTop: 'var(--space-lg)' }}>
-        <div className="vlist" ref={scrollContainerRef}>
+      <div className="home-split shorts-split" style={{ marginTop: 'var(--space-lg)' }}>
+        <div className="shorts-rail" ref={scrollContainerRef}>
           {loading && videos.length === 0 ? (
-            Array.from({ length: 6 }).map((_, i) => <VideoListItemSkeleton key={i} />)
+            Array.from({ length: 8 }).map((_, i) => <ShortsTileSkeleton key={i} />)
           ) : error && videos.length === 0 ? (
-            <div className="loading-container" style={{ minHeight: 200, textAlign: 'center' }}>
-              <p className="text-muted">{error}</p>
-              <button
-                className="btn btn--primary"
-                style={{ marginTop: 'var(--space-md)' }}
-                onClick={() => {
-                  setError(null);
-                  fetchVideos(true);
-                }}
-              >
-                Retry
-              </button>
+            <div className="shorts-rail__full">
+              <EmptyState
+                title="Couldn't load shorts"
+                message={error}
+                action={
+                  <button className="btn btn--primary" onClick={() => { setError(null); fetchVideos(false); }}>
+                    Retry
+                  </button>
+                }
+              />
             </div>
           ) : videos.length === 0 ? (
-            <div className="loading-container" style={{ minHeight: 200 }}>
-              <p className="text-muted">No shorts found</p>
+            <div className="shorts-rail__full">
+              <EmptyState title="No shorts found" message="Try another category or a different search." />
             </div>
           ) : (
-            videos.map((video) => (
-              <VideoListItem
+            videos.map((video, index) => (
+              <ShortsTile
                 key={video.id || video.youtube_id}
+                index={index}
                 video={video}
                 isSelected={(selectedVideo?.youtube_id || selectedVideo?.id) === (video.youtube_id || video.id)}
                 onSelect={setSelectedVideo}
@@ -179,12 +179,12 @@ export default function ShortsPage() {
           )}
 
           {loadingMore && (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-md)' }}>
-              <div className="spinner" style={{ width: 28, height: 28 }} />
+            <div className="shorts-rail__full" style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-md)' }}>
+              <div className="spinner" style={{ width: 28, height: 28 }} role="status" aria-label="Loading more shorts" />
             </div>
           )}
 
-          {hasMore && <div ref={sentinelRef} style={{ height: 10 }} />}
+          {hasMore && <div ref={sentinelRef} className="shorts-rail__full" style={{ height: 10 }} />}
         </div>
 
         <AISummaryPanel video={selectedVideo} />

@@ -1,6 +1,6 @@
 'use client';
 
-export default function EmptyState({ icon = '📭', title, message, action }) {
+export default function EmptyState({ icon = '○', title, message, action }) {
   return (
     <div className="empty-state">
       <span className="empty-state__icon" aria-hidden="true">{icon}</span>

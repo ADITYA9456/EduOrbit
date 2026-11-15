@@ -2,6 +2,7 @@
 
 import { formatCount, parseDuration, timeAgo, truncate } from '@/lib/utils';
 import Image from 'next/image';
+import Skeleton from '@/components/ui/Skeleton';
 import Link from 'next/link';
 
 export default function VideoCard({ video, compact = false }) {
@@ -43,11 +44,13 @@ export default function VideoCard({ video, compact = false }) {
 
 export function VideoCardSkeleton() {
   return (
-    <div className="video-card video-card--skeleton">
-      <div className="video-card__thumbnail skeleton" />
+    <div className="video-card video-card--skeleton" aria-hidden="true">
+      <div className="video-card__thumbnail">
+        <Skeleton height="100%" radius={0} style={{ position: 'absolute', inset: 0 }} />
+      </div>
       <div className="video-card__body">
-        <div className="skeleton skeleton-line" style={{ height: 14, marginBottom: 8 }} />
-        <div className="skeleton skeleton-line skeleton-line--short" style={{ height: 12, width: '60%' }} />
+        <Skeleton height={14} style={{ marginBottom: 8 }} />
+        <Skeleton height={12} width="60%" />
       </div>
     </div>
   );

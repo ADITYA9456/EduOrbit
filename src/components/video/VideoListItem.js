@@ -1,5 +1,6 @@
 'use client';
 
+import Skeleton from '@/components/ui/Skeleton';
 import { formatCount, parseDuration, timeAgo, truncate } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -9,7 +10,6 @@ export default function VideoListItem({ video, isSelected, onSelect, index = 0 }
   const channel = video.channel_title || video.channel_name || '';
   const duration = parseDuration(video.duration);
   const category = video.category || '';
-  const videoId = video.youtube_id || video.id;
   const createdAt = video.published_at || video.created_at;
   const views = video.view_count || 0;
   const [imgError, setImgError] = useState(false);
@@ -21,13 +21,19 @@ export default function VideoListItem({ video, isSelected, onSelect, index = 0 }
       onClick={() => onSelect(video)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(video); }}
+      aria-pressed={!!isSelected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(video);
+        }
+      }}
     >
       <div className="vlist-item__thumb">
         {thumbnail && !imgError ? (
           <img
             src={thumbnail}
-            alt={title}
+            alt=""
             loading="lazy"
             decoding="async"
             onError={() => setImgError(true)}
@@ -55,12 +61,14 @@ export default function VideoListItem({ video, isSelected, onSelect, index = 0 }
 
 export function VideoListItemSkeleton() {
   return (
-    <div className="vlist-item vlist-item--skeleton">
-      <div className="vlist-item__thumb skeleton" />
+    <div className="vlist-item vlist-item--skeleton" aria-hidden="true">
+      <div className="vlist-item__thumb">
+        <Skeleton height="100%" radius={0} />
+      </div>
       <div className="vlist-item__info">
-        <div className="skeleton" style={{ height: 14, width: '80%', marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 12, width: '50%', marginBottom: 6 }} />
-        <div className="skeleton" style={{ height: 10, width: '40%' }} />
+        <Skeleton height={14} width="80%" />
+        <Skeleton height={12} width="50%" />
+        <Skeleton height={10} width="40%" />
       </div>
     </div>
   );

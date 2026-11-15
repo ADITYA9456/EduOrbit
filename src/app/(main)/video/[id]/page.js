@@ -1,5 +1,9 @@
 'use client';
 
+import EmptyState from '@/components/ui/EmptyState';
+import GlassPanel from '@/components/ui/GlassPanel';
+import Skeleton from '@/components/ui/Skeleton';
+import AISummaryPanel from '@/components/video/AISummaryPanel';
 import VideoCard from '@/components/video/VideoCard';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { useParams } from 'next/navigation';
@@ -51,8 +55,26 @@ export default function VideoPage() {
     load();
   }, [id]);
 
-  if (loading) return <div className="loading-container"><div className="spinner" /></div>;
-  if (!video) return <div className="loading-container"><p>Video not found</p></div>;
+  if (loading) {
+    return (
+      <div className="video-player" aria-busy="true">
+        <div className="video-player__main">
+          <div className="video-player__iframe-wrap">
+            <Skeleton height="100%" radius={0} style={{ position: 'absolute', inset: 0 }} />
+          </div>
+          <Skeleton height={28} width="70%" />
+          <Skeleton height={40} width="40%" />
+          <Skeleton height={96} />
+        </div>
+        <div className="video-player__sidebar">
+          <Skeleton height={20} width="50%" />
+          <Skeleton height={180} />
+          <Skeleton height={180} />
+        </div>
+      </div>
+    );
+  }
+  if (!video) return <EmptyState title="Video not found" message="It may have been removed." />;
 
   return (
     <div className="video-player animate-fade-in">
@@ -69,40 +91,44 @@ export default function VideoPage() {
         </div>
 
         {/* Info */}
-        <div className="video-player__info">
+        <GlassPanel as="section" className="video-player__info" aria-label="Video details">
           <h1 className="video-player__title">{video.title}</h1>
 
-          <div className="flex-between" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="video-player__byline">
             <div className="video-player__channel">
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
+              <div className="video-player__avatar" aria-hidden="true">
                 {(video.channel_title || 'C')[0]}
               </div>
               <div>
                 <div className="video-player__channel-name">{video.channel_title}</div>
-                <div className="text-muted text-sm">{formatCount(video.view_count)} views • {timeAgo(video.published_at)}</div>
+                <div className="text-muted text-sm">{formatCount(video.view_count)} views &middot; {timeAgo(video.published_at)}</div>
               </div>
             </div>
 
-            <div className="flex gap-sm">
-              <a
-                href={`https://youtube.com/watch?v=${video.youtube_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn--secondary btn--sm"
-              >
-                <HiExternalLink size={16} /> YouTube
-              </a>
-            </div>
+            <a
+              href={`https://youtube.com/watch?v=${video.youtube_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn--secondary btn--sm"
+            >
+              <HiExternalLink size={16} aria-hidden="true" /> YouTube
+            </a>
           </div>
 
           {/* Description */}
           {video.description && (
-            <div className="card" style={{ cursor: 'pointer' }} onClick={() => setDescExpanded(!descExpanded)}>
-              <div className={`video-player__description ${descExpanded ? 'video-player__description--expanded' : ''}`}>
+            <div className="video-player__desc-box">
+              <div id="video-description" className={`video-player__description ${descExpanded ? 'video-player__description--expanded' : ''}`}>
                 {video.description}
               </div>
-              <button className="btn btn--ghost btn--sm" style={{ marginTop: 8 }}>
-                {descExpanded ? <><HiChevronUp size={16} /> Show less</> : <><HiChevronDown size={16} /> Show more</>}
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                aria-expanded={descExpanded}
+                aria-controls="video-description"
+                onClick={() => setDescExpanded(!descExpanded)}
+              >
+                {descExpanded ? <><HiChevronUp size={16} aria-hidden="true" /> Show less</> : <><HiChevronDown size={16} aria-hidden="true" /> Show more</>}
               </button>
             </div>
           )}
@@ -115,12 +141,14 @@ export default function VideoPage() {
               ))}
             </div>
           )}
-        </div>
+        </GlassPanel>
+
+        <AISummaryPanel video={video} compact />
       </div>
 
-      {/* Sidebar — Related */}
+      {/* Sidebar - Related */}
       <div className="video-player__sidebar">
-        <h3>Related Videos</h3>
+        <h2 className="video-player__sidebar-title">Related Videos</h2>
         {related.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             {related.map((v) => (
@@ -128,7 +156,7 @@ export default function VideoPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted">No related videos found</p>
+          <EmptyState title="No related videos" message="Nothing similar to show yet." />
         )}
       </div>
     </div>
