@@ -15,7 +15,7 @@ import {
   HiUser
 } from 'react-icons/hi';
 
-export default function Header({ onToggleSidebar, sidebarOpen = false }) {
+export default function Header({ onToggleSidebar, sidebarOpen = false, menuRef }) {
   const { user, profile, isAdmin, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -31,8 +31,15 @@ export default function Header({ onToggleSidebar, sidebarOpen = false }) {
         setDropdownOpen(false);
       }
     };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setDropdownOpen(false);
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   const handleSearch = (e) => {
@@ -56,10 +63,13 @@ export default function Header({ onToggleSidebar, sidebarOpen = false }) {
       {/* Left */}
       <div className="header__left">
         <button
+          ref={menuRef}
+          type="button"
           className={`header__menu-btn burger ${sidebarOpen ? 'burger--open' : ''}`}
           onClick={onToggleSidebar}
           aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={sidebarOpen}
+          aria-controls="app-sidebar"
         >
           <span className="burger__bar" />
           <span className="burger__bar" />
@@ -77,16 +87,16 @@ export default function Header({ onToggleSidebar, sidebarOpen = false }) {
       </div>
 
       {/* Center — Search (Always visible) */}
-      <div className="header__center" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%'}}>
-        <form className="header__search" onSubmit={handleSearch} style={{width: '100%', maxWidth: 400}}>
+      <div className="header__center">
+        <form className="header__search" onSubmit={handleSearch}>
           <input
             className="header__search-input"
             placeholder="Search educational videos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{width: '100%', minWidth: 120}}
+           
           />
-          <button type="submit" className="header__search-btn" aria-label="Search" style={{marginLeft: 8}}>
+          <button type="submit" className="header__search-btn" aria-label="Search">
             <HiSearch size={18} />
           </button>
         </form>
@@ -115,6 +125,8 @@ export default function Header({ onToggleSidebar, sidebarOpen = false }) {
               className="header__avatar-btn"
               onClick={() => setDropdownOpen((prev) => !prev)}
               aria-label="User menu"
+              aria-haspopup="true"
+              aria-expanded={dropdownOpen}
             >
               {profile?.avatar_url ? (
                 <img className="header__avatar" src={profile.avatar_url} alt={`${profile?.full_name || 'User'} avatar`} />
@@ -147,8 +159,8 @@ export default function Header({ onToggleSidebar, sidebarOpen = false }) {
           </div>
         ) : (
           <div className="header__auth-btns">
-            <Link href="/login" className="btn btn--ghost btn--sm">Sign In</Link>
-            <Link href="/signup" className="btn btn--primary btn--sm">Sign Up</Link>
+            <Link href="/login" className="btn btn--ghost btn--sm">Login</Link>
+            <Link href="/signup" className="btn btn--primary btn--sm">Get Started</Link>
           </div>
         )}
       </div>
