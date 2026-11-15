@@ -164,65 +164,64 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="profile__stats" style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: 'var(--space-md)', marginBottom: 'var(--space-xl)',
-      }}>
+      <div className="profile-overview">
+        <div className="card profile-points">
+          <HiStar size={28} aria-hidden="true" />
+          <div>
+            <div className="profile-points__value">{profile?.total_points || 0}</div>
+            <div className="profile-points__label">Total points</div>
+          </div>
+        </div>
         {[
-          { icon: HiStar, label: 'Total Points', value: profile?.total_points || 0, color: 'var(--warning)' },
-          { icon: HiCode, label: 'Solved', value: profile?.problems_solved || 0, color: 'var(--accent)' },
-          { icon: HiFire, label: 'Current Streak', value: `${profile?.current_streak || 0}d`, color: 'var(--danger)' },
-          { icon: HiTrophy, label: 'Longest Streak', value: `${profile?.longest_streak || 0}d`, color: 'var(--success)' },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="card text-center">
-            <Icon size={24} color={color} style={{ marginBottom: 'var(--space-xs)' }} />
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color }}>{value}</div>
-            <div className="text-sm text-muted">{label}</div>
+          { icon: HiCode, label: 'Solved', value: profile?.problems_solved || 0, tone: 'accent' },
+          { icon: HiFire, label: 'Current streak', value: `${profile?.current_streak ?? currentStreak ?? 0}d`, tone: 'danger' },
+          { icon: HiTrophy, label: 'Longest streak', value: `${profile?.longest_streak ?? longestStreak ?? 0}d`, tone: 'success' },
+        ].map(({ icon: Icon, label, value, tone }) => (
+          <div key={label} className={`card profile-stat profile-stat--${tone}`}>
+            <Icon size={22} aria-hidden="true" />
+            <div className="profile-stat__value">{value}</div>
+            <div className="profile-stat__label">{label}</div>
           </div>
         ))}
       </div>
 
       {/* Streak Calendar */}
-      <div className="card" style={{ marginBottom: 'var(--space-xl)' }}>
-        <h3 style={{ marginBottom: 'var(--space-md)' }}><HiCalendar size={18} /> Activity (Last 30 Days)</h3>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 28px)',
-          gap: 4, justifyContent: 'center',
-        }}>
+      <section className="card" aria-labelledby="streak-title">
+        <h2 id="streak-title" className="profile-section-title"><HiCalendar size={18} aria-hidden="true" /> Activity (last 30 days)</h2>
+        <ul className="streak-grid" aria-label={`${calendarDays.filter((d) => d.active).length} active days in the last 30`}>
           {calendarDays.map(({ dateStr, active, date }) => (
-            <div
+            <li
               key={dateStr}
-              title={`${date.toLocaleDateString()} ${active ? '✓' : ''}`}
-              style={{
-                width: 24, height: 24, borderRadius: 4,
-                background: active ? 'var(--success)' : 'var(--surface-secondary)',
-                opacity: active ? 1 : 0.3,
-                cursor: 'default',
-              }}
-            />
+              title={`${date.toLocaleDateString()}${active ? ' - active' : ''}`}
+              className={`streak-day ${active ? 'streak-day--active' : ''}`}
+            >
+              <span className="sr-only">{date.toLocaleDateString()}: {active ? 'active' : 'no activity'}</span>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+        <p className="streak-legend">
+          <span className="streak-legend__swatch" aria-hidden="true" /> Active day
+          <span className="streak-legend__swatch streak-legend__swatch--off" aria-hidden="true" /> No activity
+        </p>
+      </section>
 
       {/* Badges */}
-      <div className="card" style={{ marginBottom: 'var(--space-xl)' }}>
-        <h3 style={{ marginBottom: 'var(--space-md)' }}><HiTrophy size={18} /> Badges</h3>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-          gap: 'var(--space-md)',
-        }}>
+      <section className="card" aria-labelledby="badges-title">
+        <h2 id="badges-title" className="profile-section-title"><HiTrophy size={18} aria-hidden="true" /> Badges</h2>
+        <ul className="profile-badges">
           {allBadges.map((b) => (
-            <div
+            <li
               key={b.id}
-              className="text-center"
-              style={{ opacity: b.earned ? 1 : 0.3, padding: 'var(--space-sm)' }}
+              className={`profile-badge ${b.earned ? 'profile-badge--earned' : 'profile-badge--locked'}`}
+              title={b.description}
             >
-              <div style={{ fontSize: '2rem', marginBottom: 4 }}>{b.icon}</div>
-              <div className="text-sm" style={{ fontWeight: b.earned ? 600 : 400 }}>{b.name}</div>
-            </div>
+              <span className="profile-badge__icon" aria-hidden="true">{b.icon}</span>
+              <span className="profile-badge__name">{b.name}</span>
+              <span className="profile-badge__state">{b.earned ? 'Earned' : 'Locked'}</span>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
 
       {/* Bookmarked Problems */}
       <div className="card" style={{ marginBottom: 'var(--space-xl)' }}>
