@@ -229,17 +229,21 @@ export default function ProblemPage() {
 
     const score = isCorrect ? (problem.points || 5) : 0;
 
-    await fetch('/api/progress', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        questionId: problem.id,
-        status: isCorrect ? 'solved' : 'attempted',
-        languageUsed: 'mcq',
-        score,
-        submittedCode: mcqAnswer,
-      }),
-    });
+    try {
+      await fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: problem.id,
+          status: isCorrect ? 'solved' : 'attempted',
+          languageUsed: 'mcq',
+          score,
+          submittedCode: mcqAnswer,
+        }),
+      });
+    } catch (err) {
+      toast.error('Could not save your progress');
+    }
 
     if (isCorrect) {
       toast.success(`Correct! +${score} pts`);
@@ -251,14 +255,19 @@ export default function ProblemPage() {
 
   const toggleBookmark = async () => {
     if (!user) return toast.error('Sign in to bookmark');
-    const res = await fetch('/api/bookmarks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId: problem.id }),
-    });
-    const data = await res.json();
-    setBookmarked(data.bookmarked);
-    toast.success(data.bookmarked ? 'Bookmarked!' : 'Bookmark removed');
+    try {
+      const res = await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: problem.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update bookmark');
+      setBookmarked(data.bookmarked);
+      toast.success(data.bookmarked ? 'Bookmarked!' : 'Bookmark removed');
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const showAIHint = () => {
