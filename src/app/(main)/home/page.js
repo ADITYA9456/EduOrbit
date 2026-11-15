@@ -4,6 +4,7 @@ import AISummaryPanel from '@/components/video/AISummaryPanel';
 import CategoryPills from '@/components/video/CategoryPills';
 import VideoListItem, { VideoListItemSkeleton } from '@/components/video/VideoListItem';
 import { useAuth } from '@/context/AuthProvider';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -162,9 +163,31 @@ export default function HomePage() {
     <div className="animate-fade-in">
       {/* Hero — only for guests */}
       {!searchQuery && !user && (
-        <section className="hero">
-          <h1>Learn. Code. <span style={{ background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Level Up.</span></h1>
-          <p>AI-curated educational videos and a competitive coding platform — all in one place.</p>
+        <section className="lp-hero">
+          <div className="lp-hero__grid" aria-hidden="true" />
+          <div className="lp-hero__orb lp-hero__orb--a" aria-hidden="true" />
+          <div className="lp-hero__orb lp-hero__orb--b" aria-hidden="true" />
+          <span className="lp-hero__eyebrow">
+            <span className="lp-hero__eyebrow-dot">NEW</span>
+            AI summaries for every video
+          </span>
+          <h1 className="lp-hero__title">
+            <span className="lp-word" style={{ '--w': 0 }}>Learn.</span>{' '}
+            <span className="lp-word" style={{ '--w': 1 }}>Code.</span>{' '}
+            <span className="lp-gradient">Level Up.</span>
+          </h1>
+          <p className="lp-hero__sub">
+            AI-curated educational videos and a competitive coding platform — all in one place.
+          </p>
+          <div className="lp-hero__cta">
+            <Link href="/signup" className="btn btn--primary">Get started free</Link>
+            <a href="#explore" className="btn btn--secondary">Browse videos</a>
+          </div>
+          <div className="lp-hero__stats">
+            <div className="lp-stat"><div className="lp-stat__value">10k+</div><div className="lp-stat__label">Videos</div></div>
+            <div className="lp-stat"><div className="lp-stat__value">500+</div><div className="lp-stat__label">Problems</div></div>
+            <div className="lp-stat"><div className="lp-stat__value">Weekly</div><div className="lp-stat__label">Contests</div></div>
+          </div>
         </section>
       )}
 
@@ -178,7 +201,7 @@ export default function HomePage() {
       <CategoryPills active={category} onChange={handleCategoryChange} />
 
       {/* Split Layout: Video List + AI Summary */}
-      <div className="home-split" style={{ marginTop: 'var(--space-lg)' }}>
+      <div id="explore" className="home-split" style={{ marginTop: 'var(--space-lg)', scrollMarginTop: 'calc(var(--header-height) + 16px)' }}>
         {/* Video List */}
         <div className="vlist" ref={scrollContainerRef}>
           {loading && videos.length === 0 ? (
@@ -201,9 +224,10 @@ export default function HomePage() {
               <p className="text-muted">No videos found</p>
             </div>
           ) : (
-            videos.map((video) => (
+            videos.map((video, index) => (
               <VideoListItem
                 key={video.id || video.youtube_id}
+                index={index}
                 video={video}
                 isSelected={(selectedVideo?.youtube_id || selectedVideo?.id) === (video.youtube_id || video.id)}
                 onSelect={setSelectedVideo}

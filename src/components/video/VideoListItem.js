@@ -3,7 +3,7 @@
 import { formatCount, parseDuration, timeAgo, truncate } from '@/lib/utils';
 import { useState } from 'react';
 
-export default function VideoListItem({ video, isSelected, onSelect }) {
+export default function VideoListItem({ video, isSelected, onSelect, index = 0 }) {
   const thumbnail = video.thumbnail_url || video.thumbnail || '';
   const title = video.title || '';
   const channel = video.channel_title || video.channel_name || '';
@@ -16,7 +16,8 @@ export default function VideoListItem({ video, isSelected, onSelect }) {
 
   return (
     <div
-      className={`vlist-item ${isSelected ? 'vlist-item--active' : ''}`}
+      className={`vlist-item vlist-item--entering ${isSelected ? 'vlist-item--active' : ''}`}
+      style={{ '--i': index % 10 }}
       onClick={() => onSelect(video)}
       role="button"
       tabIndex={0}
@@ -27,6 +28,8 @@ export default function VideoListItem({ video, isSelected, onSelect }) {
           <img
             src={thumbnail}
             alt={title}
+            loading="lazy"
+            decoding="async"
             onError={() => setImgError(true)}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />

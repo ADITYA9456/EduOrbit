@@ -1,9 +1,23 @@
 import { AuthProvider } from '@/context/AuthProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
+import './premium.css';
 
 export const dynamic = 'force-dynamic';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains',
+});
 
 export const metadata = {
   title: 'EduOrbite — AI-Powered Learning & Coding Platform',
@@ -11,16 +25,25 @@ export const metadata = {
   keywords: ['education', 'coding', 'programming', 'AI', 'learning'],
 };
 
+export const viewport = {
+  themeColor: '#07090f',
+  colorScheme: 'dark light',
+};
+
+// Runs before first paint so the saved theme never flashes.
+const themeScript = `try{var t=localStorage.getItem('eduorbite-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-theme="dark"
+      className={`${inter.variable} ${jetbrains.variable}`}
+      suppressHydrationWarning
+    >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
       </head>
       <body>
         <ThemeProvider>
@@ -38,6 +61,8 @@ export default function RootLayout({ children }) {
                   background: 'var(--bg-elevated)',
                   color: 'var(--text-primary)',
                   border: '1px solid var(--border-color)',
+                  borderRadius: '14px',
+                  boxShadow: 'var(--shadow-lg)',
                 },
               }}
             />

@@ -49,7 +49,12 @@ export default function Sidebar({ open, onClose }) {
         {/* Mobile close header */}
         <div className="sidebar__header">
           <div className="sidebar__title">
-            <span>🎓</span> EduOrbite
+            <span className="logo-mark" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+                <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" />
+              </svg>
+            </span> EduOrbite
           </div>
           <button className="sidebar__close-btn" onClick={onClose} aria-label="Close sidebar">
             <HiX size={20} />
