@@ -1,16 +1,16 @@
 'use client';
 
 import AISummaryPanel from '@/components/video/AISummaryPanel';
-import Typewriter from '@/components/ui/Typewriter';
+import GuestClosing from '@/components/home/GuestClosing';
+import GuestHero from '@/components/home/GuestHero';
 import CategoryPills from '@/components/video/CategoryPills';
 import VideoListItem, { VideoListItemSkeleton } from '@/components/video/VideoListItem';
 import { useAuth } from '@/context/AuthProvider';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
@@ -162,37 +162,8 @@ export default function HomePage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Hero — only for guests */}
-      {!searchQuery && !user && (
-        <section className="lp-hero">
-          <div className="lp-hero__grid" aria-hidden="true" />
-          <div className="lp-hero__orb lp-hero__orb--a" aria-hidden="true" />
-          <div className="lp-hero__orb lp-hero__orb--b" aria-hidden="true" />
-          <div className="lp-hero__inner">
-            <span className="lp-hero__eyebrow">
-              <span className="lp-hero__eyebrow-dot">AI</span>
-              Every video is checked before it goes live
-            </span>
-            <h1 className="lp-hero__title">
-              <span className="lp-word" style={{ '--w': 0 }}>Learn.</span>{' '}
-              <span className="lp-word" style={{ '--w': 1 }}>Code.</span>{' '}
-              <span className="lp-gradient">Level up.</span>
-            </h1>
-            <Typewriter
-              className="lp-hero__sub"
-              text="Learning-only videos, a place to practise code, weekly contests and a leaderboard to climb. Where do you want to start?"
-            />
-            <div className="lp-pills">
-              <Link href="/signup" className="lp-pill lp-pill--solid">Get started free</Link>
-              <a href="#explore" className="lp-pill lp-pill--solid">Browse videos</a>
-              <Link href="/coding" className="lp-pill lp-pill--solid">Try coding practice</Link>
-              <Link href="/contests" className="lp-pill lp-pill--solid">See contests</Link>
-              <Link href="/leaderboard" className="lp-pill lp-pill--solid">View leaderboard</Link>
-              <Link href="/login" className="lp-pill lp-pill--outline">Already a member? Sign in</Link>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Hero - only for guests */}
+      {!searchQuery && !user && <GuestHero />}
 
       {searchQuery && (
         <h2 style={{ marginBottom: 'var(--space-lg)' }}>
@@ -252,6 +223,8 @@ export default function HomePage() {
         {/* AI Summary Panel */}
         <AISummaryPanel video={selectedVideo} />
       </div>
+
+      {!authLoading && !user && <GuestClosing />}
     </div>
   );
 }

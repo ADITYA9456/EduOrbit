@@ -39,7 +39,7 @@ export default function VideoListItem({ video, isSelected, onSelect, index = 0 }
         {duration && <span className="vlist-item__duration">{duration}</span>}
       </div>
       <div className="vlist-item__info">
-        <h4 className="vlist-item__title">{truncate(title, 70)}</h4>
+        <h3 className="vlist-item__title">{truncate(title, 70)}</h3>
         <p className="vlist-item__channel">{channel}</p>
         <div className="vlist-item__meta">
           {views > 0 && <span>{formatCount(views)} views</span>}

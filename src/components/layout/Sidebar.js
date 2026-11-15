@@ -3,6 +3,7 @@
 import { useAuth } from '@/context/AuthProvider';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import {
   HiChartBar,
   HiCode,
@@ -32,6 +33,15 @@ const NAV_ITEMS = [
 export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
   const { user, isAdmin } = useAuth();
+  const asideRef = useRef(null);
+
+  // Move focus into the sidebar when it opens so keyboard users land on its links
+  useEffect(() => {
+    if (!open) return;
+    const items = asideRef.current?.querySelectorAll('a[href], button');
+    const first = items && Array.from(items).find((el) => el.offsetParent !== null);
+    first?.focus();
+  }, [open]);
 
   // Only close sidebar on mobile (overlay mode), not on desktop
   const handleLinkClick = () => {
@@ -43,9 +53,9 @@ export default function Sidebar({ open, onClose }) {
   return (
     <>
       {/* Mobile overlay */}
-      {open && <div className="sidebar__overlay" onClick={onClose} />}
+      {open && <div className="sidebar__overlay" onClick={onClose} aria-hidden="true" />}
 
-      <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
+      <aside id="app-sidebar" ref={asideRef} className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         {/* Mobile close header */}
         <div className="sidebar__header">
           <div className="sidebar__title">
@@ -61,7 +71,7 @@ export default function Sidebar({ open, onClose }) {
           </button>
         </div>
 
-        <nav className="sidebar__nav">
+        <nav className="sidebar__nav" aria-label="Primary">
           {NAV_ITEMS.map(({ section, links }) => (
             <div key={section} className="sidebar__section">
               <div className="sidebar__section-title">{section}</div>
@@ -74,6 +84,7 @@ export default function Sidebar({ open, onClose }) {
                     href={href}
                     className={`sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
                     onClick={handleLinkClick}
+                    aria-current={isActive ? 'page' : undefined}
                     title={label}
                   >
                     <Icon size={20} className="sidebar__link-icon" />
@@ -91,6 +102,7 @@ export default function Sidebar({ open, onClose }) {
                 href="/admin"
                 className={`sidebar__link ${pathname === '/admin' ? 'sidebar__link--active' : ''}`}
                 onClick={handleLinkClick}
+                aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
                 title="Admin Panel"
               >
                 <HiShieldCheck size={20} className="sidebar__link-icon" />

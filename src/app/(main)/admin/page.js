@@ -1,6 +1,8 @@
 'use client';
 
+import Dialog from '@/components/ui/Dialog';
 import EmptyState from '@/components/ui/EmptyState';
+import Table from '@/components/ui/Table';
 import { useAuth } from '@/context/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -43,6 +45,16 @@ export default function AdminPage() {
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
   const [aiLogs, setAiLogs] = useState([]);
+
+  // Pending confirmation: { title, message, confirmLabel, danger, run }
+  const [confirm, setConfirm] = useState(null);
+  const ask = (opts) => setConfirm(opts);
+  const closeConfirm = useCallback(() => setConfirm(null), []);
+  const runConfirm = () => {
+    const run = confirm?.run;
+    setConfirm(null);
+    if (run) run();
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -169,7 +181,11 @@ export default function AdminPage() {
       </div>
 
       {loading ? (
-        <div className="loading-container"><div className="spinner" /></div>
+        <div className="route-loading" aria-busy="true">
+          <div className="skeleton route-loading__card" />
+          <div className="skeleton route-loading__card" />
+          <div className="skeleton route-loading__card" />
+        </div>
       ) : (
         <>
           {/* Overview */}
@@ -226,10 +242,27 @@ export default function AdminPage() {
                           >
                             <HiEye size={14} /> Preview
                           </a>
-                          <button className="btn btn--primary btn--sm" onClick={() => handleVideoAction(v.id, 'approve')}>
+                          <button
+                            className="btn btn--primary btn--sm"
+                            onClick={() => ask({
+                              title: 'Approve this video?',
+                              message: `"${v.title}" will be published to the feed.`,
+                              confirmLabel: 'Approve',
+                              run: () => handleVideoAction(v.id, 'approve'),
+                            })}
+                          >
                             <HiCheckCircle size={14} /> Approve
                           </button>
-                          <button className="btn btn--danger btn--sm" onClick={() => handleVideoAction(v.id, 'reject')}>
+                          <button
+                            className="btn btn--danger btn--sm"
+                            onClick={() => ask({
+                              title: 'Reject this video?',
+                              message: `"${v.title}" will not be published.`,
+                              confirmLabel: 'Reject',
+                              danger: true,
+                              run: () => handleVideoAction(v.id, 'reject'),
+                            })}
+                          >
                             <HiXCircle size={14} /> Reject
                           </button>
                         </div>
@@ -246,71 +279,86 @@ export default function AdminPage() {
             reports.length === 0 ? (
               <EmptyState icon={<HiCheckCircle size={48} />} title="No reports" message="All clear!" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              <Table
+                caption="Video reports"
+                columns={[
+                  { key: 'status', label: 'Status' },
+                  { key: 'video', label: 'Video' },
+                  { key: 'reason', label: 'Reason' },
+                  { key: 'by', label: 'Reported by' },
+                  { key: 'date', label: 'Date' },
+                  { key: 'actions', label: 'Actions' },
+                ]}
+              >
                 {reports.map((r) => (
-                  <div key={r.id} className="card" style={{ padding: 'var(--space-md)' }}>
-                    <div className="flex-between" style={{ flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-                      <div>
-                        <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-                          <span className="badge" style={{
-                            background: r.status === 'pending' ? 'var(--warning)22' : 'var(--success)22',
-                            color: r.status === 'pending' ? 'var(--warning)' : 'var(--success)',
-                          }}>
-                            {r.status}
-                          </span>
-                          <strong>{r.videos?.title || 'Video'}</strong>
-                        </div>
-                        <p className="text-sm text-muted" style={{ marginTop: 4 }}>
-                          Reason: {r.reason} • By: {r.profiles?.full_name || 'User'} • {new Date(r.created_at).toLocaleDateString()}
-                        </p>
-                        {r.description && <p className="text-sm" style={{ marginTop: 4 }}>{r.description}</p>}
-                      </div>
-                      {r.status === 'pending' && (
+                  <tr key={r.id}>
+                    <td>
+                      <span className={`badge ${r.status === 'pending' ? 'badge--medium' : 'badge--easy'}`}>{r.status}</span>
+                    </td>
+                    <th scope="row" className="table__primary">{r.videos?.title || 'Video'}</th>
+                    <td>
+                      {r.reason}
+                      {r.description && <span className="table__sub">{r.description}</span>}
+                    </td>
+                    <td>{r.profiles?.full_name || 'User'}</td>
+                    <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                    <td>
+                      {r.status === 'pending' ? (
                         <div className="flex gap-sm">
                           <button className="btn btn--ghost btn--sm" onClick={() => handleReportAction(r.id, 'dismissed')}>Dismiss</button>
                           <button className="btn btn--danger btn--sm" onClick={() => handleReportAction(r.id, 'resolved')}>Resolve</button>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      ) : '—'}
+                    </td>
+                  </tr>
                 ))}
-              </div>
+              </Table>
             )
           )}
 
           {/* Users */}
           {tab === 'users' && (
-            <div className="leaderboard__table">
-              <div className="leaderboard__row leaderboard__row--header">
-                <span style={{ flex: 1 }}>User</span>
-                <span style={{ width: 100 }}>Role</span>
-                <span style={{ width: 80 }}>Points</span>
-                <span style={{ width: 120 }}>Joined</span>
-                <span style={{ width: 100 }}>Actions</span>
-              </div>
-              {users.map((u) => (
-                <div key={u.id} className="leaderboard__row">
-                  <span style={{ flex: 1 }}>
-                    <strong>{u.full_name || u.username || 'User'}</strong>
-                    {u.banned && <span className="badge" style={{ marginLeft: 8, background: 'var(--danger)22', color: 'var(--danger)' }}>Banned</span>}
-                  </span>
-                  <span style={{ width: 100 }}>
-                    <span className="badge">{u.role || 'user'}</span>
-                  </span>
-                  <span style={{ width: 80 }}>{u.total_points || 0}</span>
-                  <span style={{ width: 120, fontSize: '0.8rem' }}>{new Date(u.created_at).toLocaleDateString()}</span>
-                  <span style={{ width: 100 }}>
-                    <button
-                      className={`btn btn--sm ${u.banned ? 'btn--ghost' : 'btn--danger'}`}
-                      onClick={() => handleBanUser(u.id, !u.banned)}
-                      style={{ padding: '2px 8px', fontSize: '0.75rem' }}
-                    >
-                      <HiBan size={12} /> {u.banned ? 'Unban' : 'Ban'}
-                    </button>
-                  </span>
-                </div>
-              ))}
-            </div>
+            <Table
+              caption="Users"
+              columns={[
+                { key: 'user', label: 'User' },
+                { key: 'role', label: 'Role' },
+                { key: 'points', label: 'Points' },
+                { key: 'joined', label: 'Joined' },
+                { key: 'actions', label: 'Actions' },
+              ]}
+            >
+              {users.map((u) => {
+                const name = u.full_name || u.username || 'User';
+                return (
+                  <tr key={u.id}>
+                    <th scope="row" className="table__primary">
+                      {name}
+                      {u.banned && <span className="badge badge--hard table__tag">Banned</span>}
+                    </th>
+                    <td><span className="badge badge--accent">{u.role || 'user'}</span></td>
+                    <td>{u.total_points || 0}</td>
+                    <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <button
+                        className={`btn btn--sm ${u.banned ? 'btn--ghost' : 'btn--danger'}`}
+                        onClick={() => ask({
+                          title: u.banned ? `Unban ${name}?` : `Ban ${name}?`,
+                          message: u.banned
+                            ? 'They will be able to use the platform again.'
+                            : 'They will lose access until you unban them.',
+                          confirmLabel: u.banned ? 'Unban' : 'Ban',
+                          danger: !u.banned,
+                          run: () => handleBanUser(u.id, !u.banned),
+                        })}
+                      >
+                        <HiBan size={12} /> {u.banned ? 'Unban' : 'Ban'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
           )}
 
           {/* AI Logs */}
@@ -318,33 +366,49 @@ export default function AdminPage() {
             aiLogs.length === 0 ? (
               <EmptyState icon={<HiShieldCheck size={48} />} title="No logs" message="No AI verification logs yet." />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              <Table
+                caption="AI verification logs"
+                columns={[
+                  { key: 'result', label: 'Result' },
+                  { key: 'video', label: 'Video' },
+                  { key: 'confidence', label: 'Confidence' },
+                  { key: 'provider', label: 'Provider' },
+                  { key: 'when', label: 'When' },
+                ]}
+              >
                 {aiLogs.map((log) => (
-                  <div key={log.id} className="card" style={{ padding: 'var(--space-md)' }}>
-                    <div className="flex-between">
-                      <div>
-                        <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-                          {log.is_educational ?
-                            <HiCheckCircle size={16} color="var(--success)" /> :
-                            <HiXCircle size={16} color="var(--danger)" />
-                          }
-                          <strong>{log.videos?.title || log.video_title || 'Video'}</strong>
-                        </div>
-                        <p className="text-sm text-muted" style={{ marginTop: 4 }}>
-                          Confidence: {Math.round((log.confidence_score || 0) * 100)}%
-                          • Provider: {log.ai_provider || 'mock'}
-                          • {new Date(log.created_at).toLocaleString()}
-                        </p>
-                        {log.reason && <p className="text-sm" style={{ marginTop: 4 }}>{log.reason}</p>}
-                      </div>
-                    </div>
-                  </div>
+                  <tr key={log.id}>
+                    <td>
+                      {log.is_educational ? (
+                        <span className="badge badge--easy"><HiCheckCircle size={14} aria-hidden="true" /> Educational</span>
+                      ) : (
+                        <span className="badge badge--hard"><HiXCircle size={14} aria-hidden="true" /> Rejected</span>
+                      )}
+                    </td>
+                    <th scope="row" className="table__primary">
+                      {log.videos?.title || log.video_title || 'Video'}
+                      {log.reason && <span className="table__sub">{log.reason}</span>}
+                    </th>
+                    <td>{Math.round((log.confidence_score || 0) * 100)}%</td>
+                    <td>{log.ai_provider || 'mock'}</td>
+                    <td>{new Date(log.created_at).toLocaleString()}</td>
+                  </tr>
                 ))}
-              </div>
+              </Table>
             )
           )}
         </>
       )}
+
+      <Dialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmLabel={confirm?.confirmLabel}
+        danger={confirm?.danger}
+        onConfirm={runConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

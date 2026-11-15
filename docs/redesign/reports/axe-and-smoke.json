@@ -1,0 +1,305 @@
+[
+  {
+    "route": "/",
+    "axe": {
+      "light": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "sample": ".category-pill--active"
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ],
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ]
+    },
+    "console": [],
+    "status": 200,
+    "final": "/home",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 1
+    }
+  },
+  {
+    "route": "/home",
+    "axe": {
+      "light": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "sample": ".category-pill--active"
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ],
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ]
+    },
+    "console": [],
+    "status": 200,
+    "final": "/home",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 1
+    }
+  },
+  {
+    "route": "/shorts",
+    "axe": {
+      "light": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "sample": ".category-pill--active"
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ],
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ]
+    },
+    "console": [],
+    "status": 200,
+    "final": "/shorts",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 1
+    }
+  },
+  {
+    "route": "/coding",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/coding",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/practice",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/practice",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/contests",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/contests",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/leaderboard",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/leaderboard",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/login",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/login",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/signup",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/signup",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/upload",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/login",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/profile",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/login",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/admin",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [],
+    "status": 200,
+    "final": "/login",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/video/dQw4w9WgXcQ",
+    "axe": {
+      "light": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ],
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ]
+    },
+    "console": [],
+    "status": 200,
+    "final": "/video/dQw4w9WgXcQ",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/does-not-exist",
+    "axe": {
+      "light": [],
+      "dark": []
+    },
+    "console": [
+      "desktop/light: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "desktop/dark: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "mobile/light: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "mobile/dark: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "status": 404,
+    "final": "/does-not-exist",
+    "hScroll": false,
+    "motion": {
+      "runningAnims": 0,
+      "names": [],
+      "partiallyTransparent": 0
+    }
+  }
+]

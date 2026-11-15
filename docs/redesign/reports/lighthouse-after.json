@@ -1,0 +1,42 @@
+[
+  {
+    "route": "/home",
+    "finalUrl": "/home",
+    "perf": 35,
+    "a11y": 98,
+    "bp": 100,
+    "lcpMs": 4401,
+    "cls": 0,
+    "tbtMs": 3095,
+    "lcpElement": null,
+    "failedA11y": [
+      "heading-order"
+    ]
+  },
+  {
+    "route": "/coding",
+    "finalUrl": "/coding",
+    "perf": 51,
+    "a11y": 100,
+    "bp": 100,
+    "lcpMs": 1714,
+    "cls": 0,
+    "tbtMs": 3570,
+    "lcpElement": null,
+    "failedA11y": []
+  },
+  {
+    "route": "/video/dQw4w9WgXcQ",
+    "finalUrl": "/video/dQw4w9WgXcQ",
+    "perf": 42,
+    "a11y": 98,
+    "bp": 96,
+    "lcpMs": 1194,
+    "cls": 0.261,
+    "tbtMs": 4355,
+    "lcpElement": null,
+    "failedA11y": [
+      "heading-order"
+    ]
+  }
+]
