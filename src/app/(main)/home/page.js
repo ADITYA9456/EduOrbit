@@ -1,6 +1,7 @@
 'use client';
 
 import AISummaryPanel from '@/components/video/AISummaryPanel';
+import Typewriter from '@/components/ui/Typewriter';
 import CategoryPills from '@/components/video/CategoryPills';
 import VideoListItem, { VideoListItemSkeleton } from '@/components/video/VideoListItem';
 import { useAuth } from '@/context/AuthProvider';
@@ -167,26 +168,28 @@ export default function HomePage() {
           <div className="lp-hero__grid" aria-hidden="true" />
           <div className="lp-hero__orb lp-hero__orb--a" aria-hidden="true" />
           <div className="lp-hero__orb lp-hero__orb--b" aria-hidden="true" />
-          <span className="lp-hero__eyebrow">
-            <span className="lp-hero__eyebrow-dot">NEW</span>
-            AI summaries for every video
-          </span>
-          <h1 className="lp-hero__title">
-            <span className="lp-word" style={{ '--w': 0 }}>Learn.</span>{' '}
-            <span className="lp-word" style={{ '--w': 1 }}>Code.</span>{' '}
-            <span className="lp-gradient">Level Up.</span>
-          </h1>
-          <p className="lp-hero__sub">
-            AI-curated educational videos and a competitive coding platform — all in one place.
-          </p>
-          <div className="lp-hero__cta">
-            <Link href="/signup" className="btn btn--primary">Get started free</Link>
-            <a href="#explore" className="btn btn--secondary">Browse videos</a>
-          </div>
-          <div className="lp-hero__stats">
-            <div className="lp-stat"><div className="lp-stat__value">10k+</div><div className="lp-stat__label">Videos</div></div>
-            <div className="lp-stat"><div className="lp-stat__value">500+</div><div className="lp-stat__label">Problems</div></div>
-            <div className="lp-stat"><div className="lp-stat__value">Weekly</div><div className="lp-stat__label">Contests</div></div>
+          <div className="lp-hero__inner">
+            <span className="lp-hero__eyebrow">
+              <span className="lp-hero__eyebrow-dot">AI</span>
+              Every video is checked before it goes live
+            </span>
+            <h1 className="lp-hero__title">
+              <span className="lp-word" style={{ '--w': 0 }}>Learn.</span>{' '}
+              <span className="lp-word" style={{ '--w': 1 }}>Code.</span>{' '}
+              <span className="lp-gradient">Level up.</span>
+            </h1>
+            <Typewriter
+              className="lp-hero__sub"
+              text="Learning-only videos, a place to practise code, weekly contests and a leaderboard to climb. Where do you want to start?"
+            />
+            <div className="lp-pills">
+              <Link href="/signup" className="lp-pill lp-pill--solid">Get started free</Link>
+              <a href="#explore" className="lp-pill lp-pill--solid">Browse videos</a>
+              <Link href="/coding" className="lp-pill lp-pill--solid">Try coding practice</Link>
+              <Link href="/contests" className="lp-pill lp-pill--solid">See contests</Link>
+              <Link href="/leaderboard" className="lp-pill lp-pill--solid">View leaderboard</Link>
+              <Link href="/login" className="lp-pill lp-pill--outline">Already a member? Sign in</Link>
+            </div>
           </div>
         </section>
       )}

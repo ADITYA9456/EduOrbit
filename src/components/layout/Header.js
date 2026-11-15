@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   HiLogout,
-  HiMenu,
   HiMoon,
   HiSearch,
   HiShieldCheck,
@@ -16,7 +15,7 @@ import {
   HiUser
 } from 'react-icons/hi';
 
-export default function Header({ onToggleSidebar }) {
+export default function Header({ onToggleSidebar, sidebarOpen = false }) {
   const { user, profile, isAdmin, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -56,8 +55,15 @@ export default function Header({ onToggleSidebar }) {
     <header className="header">
       {/* Left */}
       <div className="header__left">
-        <button className="header__menu-btn" onClick={onToggleSidebar} aria-label="Toggle sidebar">
-          <HiMenu size={22} />
+        <button
+          className={`header__menu-btn burger ${sidebarOpen ? 'burger--open' : ''}`}
+          onClick={onToggleSidebar}
+          aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={sidebarOpen}
+        >
+          <span className="burger__bar" />
+          <span className="burger__bar" />
+          <span className="burger__bar" />
         </button>
         <Link href="/home" className="header__logo">
           <span className="logo-mark" aria-hidden="true">
