@@ -65,7 +65,8 @@
 .ghero__btn:active { transform: scale(0.97); }
 .ghero a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
-@keyframes heroRise { from { transform: translate3d(0, 105%, 0); } to { transform: translate3d(0, 0, 0); } }
+/* First paint must show part of the headline so it can be the LCP candidate (a fully clipped start is never counted). */
+@keyframes heroRise { from { opacity: 0.01; transform: translate3d(0, 55%, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 @keyframes heroLift { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 @keyframes heroSettle { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.97); } to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); } }
 

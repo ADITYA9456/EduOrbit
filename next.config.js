@@ -5,6 +5,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.ytimg.com' },
       { protocol: 'https', hostname: 'img.youtube.com' },
       { protocol: 'https', hostname: 'yt3.ggpht.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: '*.googleusercontent.com' },
       { protocol: 'https', hostname: '*.supabase.co' },
     ],
@@ -41,4 +42,16 @@ requiredEnvVars.forEach((key) => {
   }
 });
 
-module.exports = nextConfig;
+// @serwist/next is ESM-only, so load it lazily from this CommonJS config.
+module.exports = async () => {
+  const { default: withSerwistInit } = await import('@serwist/next');
+  const withSerwist = withSerwistInit({
+    swSrc: 'src/app/sw.js',
+    swDest: 'public/sw.js',
+    disable: process.env.NODE_ENV === 'development',
+    cacheOnNavigation: false,
+    reloadOnOnline: false,
+    additionalPrecacheEntries: [{ url: '/offline', revision: process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now()) }],
+  });
+  return withSerwist(nextConfig);
+};

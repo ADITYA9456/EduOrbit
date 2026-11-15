@@ -34,3 +34,9 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+
+# serwist
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/workbox-*.js

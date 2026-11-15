@@ -1,5 +1,6 @@
 import { AuthProvider } from '@/context/AuthProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
+import InstallPrompt from '@/components/pwa/InstallPrompt';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
@@ -24,6 +25,8 @@ export const metadata = {
   title: 'EduOrbite — AI-Powered Learning & Coding Platform',
   description: 'Premium educational platform with AI-curated videos, coding practice, contests, and gamification.',
   keywords: ['education', 'coding', 'programming', 'AI', 'learning'],
+  icons: { apple: '/icons/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'EduOrbite', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport = {
@@ -50,6 +53,7 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <InstallPrompt />
             <Toaster
               position="bottom-right"
               toastOptions={{

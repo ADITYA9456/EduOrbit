@@ -17,10 +17,11 @@ export function useStreak(userId) {
       .from('profiles')
       .select('current_streak, longest_streak')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (data) setStreak({ current: data.current_streak, longest: data.longest_streak });
-      });
+        if (data) setStreak({ current: data.current_streak ?? 0, longest: data.longest_streak ?? 0 });
+      })
+      .catch((err) => console.error('Failed to load streak:', err));
   }, [userId, supabase]);
 
   const recordActivity = useCallback(async () => {

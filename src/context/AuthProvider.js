@@ -13,34 +13,47 @@ export function AuthProvider({ children }) {
 
   // Fetch profile from profiles table
   const fetchProfile = useCallback(async (userId) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    setProfile(data);
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) console.error('Failed to load profile:', error.message);
+      setProfile(data ?? null);
+      return data ?? null;
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+      setProfile(null);
+      return null;
+    }
   }, [supabase]);
 
   // Initialize session
   useEffect(() => {
     const initSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (session?.user) await fetchProfile(session.user.id);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+        if (session?.user) await fetchProfile(session.user.id);
+      } catch (err) {
+        console.error('Failed to initialise session:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     initSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          // Deferred: awaiting Supabase calls inside this callback can deadlock the auth client.
+          setTimeout(() => fetchProfile(session.user.id).finally(() => setLoading(false)), 0);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 

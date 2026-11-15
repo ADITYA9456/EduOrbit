@@ -761,3 +761,47 @@ h3, h4 { letter-spacing: -0.015em; }
 .upload-mine__item { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); }
 .upload-mine__info { display: grid; flex: 1; min-width: 0; }
 .upload-mine__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- PWA install prompt ---- */
+.install-prompt {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  animation: install-prompt-in 0.25s ease-out;
+}
+.install-prompt__text { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; line-height: 1.35; }
+.install-prompt__text span { color: var(--text-secondary); }
+.install-prompt__actions { display: flex; gap: 6px; flex-shrink: 0; }
+@keyframes install-prompt-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .install-prompt { animation: none; } }
+@media (max-width: 480px) {
+  .install-prompt { left: 8px; right: 8px; bottom: 8px; max-width: none; flex-direction: column; align-items: stretch; }
+  .install-prompt__actions { justify-content: flex-end; }
+}
+
+/* ---- Profile: difficulty + contests (theme tokens only, works in light and dark) ---- */
+.profile-difficulty { display: grid; gap: 10px; margin: 0; }
+.profile-difficulty__row { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 12px; font-size: 0.9rem; }
+.profile-difficulty__row dt { color: var(--text-secondary); }
+.profile-difficulty__row dd { display: flex; align-items: center; gap: 12px; margin: 0; }
+.profile-difficulty__bar { flex: 1; height: 8px; border-radius: 4px; background: var(--bg-tertiary, var(--border-color)); overflow: hidden; }
+.profile-difficulty__bar > span { display: block; height: 100%; border-radius: 4px; }
+.profile-difficulty__count { min-width: 2ch; text-align: right; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.profile-contests { list-style: none; margin: 0; padding: 0; }
+.profile-contests__row { padding: 10px 0; border-bottom: 1px solid var(--border-color); gap: 12px; }
+.profile-contests__row a { color: var(--text-primary); font-weight: 500; text-decoration: none; }
+.profile-contests__row a:hover { color: var(--accent-primary); }

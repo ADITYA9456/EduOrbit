@@ -1,6 +1,8 @@
 'use client';
 
+import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthProvider';
+import { getDisplayName } from '@/lib/avatar';
 import { useStreak } from '@/hooks/useStreak';
 import { BADGES } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -21,7 +23,7 @@ import { HiTrophy } from 'react-icons/hi2';
 
 export default function ProfilePage() {
   const supabase = createClient();
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, loading: authLoading, updateProfile } = useAuth();
   const { current: currentStreak, longest: longestStreak } = useStreak(user?.id);
 
   const [editing, setEditing] = useState(false);
@@ -32,6 +34,9 @@ export default function ProfilePage() {
   const [streakDates, setStreakDates] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
+  const [solvedByDifficulty, setSolvedByDifficulty] = useState({ Easy: 0, Medium: 0, Hard: 0 });
+  const [contestHistory, setContestHistory] = useState([]);
+  const [contestsLoading, setContestsLoading] = useState(true);
 
   useEffect(() => {
     if (profile) {
@@ -45,36 +50,92 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    async function loadRecent() {
-      setSubsLoading(true);
-      const { data } = await supabase
-        .from('submissions')
-        .select('*, coding_problems(title, difficulty)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      setRecentSubs(data || []);
-      setSubsLoading(false);
+    let cancelled = false;
 
-      // Load streak dates
-      const { data: streaks } = await supabase
-        .from('streaks')
-        .select('activity_date')
-        .eq('user_id', user.id)
-        .order('activity_date', { ascending: false })
-        .limit(30);
-      setStreakDates((streaks || []).map((s) => s.activity_date));
-
-      // Load bookmarked problems
-      setBookmarksLoading(true);
-      const bmRes = await fetch('/api/bookmarks');
-      if (bmRes.ok) {
-        const bmData = await bmRes.json();
-        setBookmarks(bmData.bookmarks || []);
+    async function loadSubs() {
+      try {
+        const { data } = await supabase
+          .from('submissions')
+          .select('*, coding_problems(title, difficulty)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (!cancelled) setRecentSubs(data || []);
+      } catch (err) {
+        console.error('Failed to load submissions:', err);
+      } finally {
+        if (!cancelled) setSubsLoading(false);
       }
-      setBookmarksLoading(false);
     }
-    loadRecent();
+
+    async function loadStreaks() {
+      try {
+        const { data } = await supabase
+          .from('streaks')
+          .select('activity_date')
+          .eq('user_id', user.id)
+          .order('activity_date', { ascending: false })
+          .limit(30);
+        if (!cancelled) setStreakDates((data || []).map((s) => s.activity_date));
+      } catch (err) {
+        console.error('Failed to load streaks:', err);
+      }
+    }
+
+    async function loadBookmarks() {
+      try {
+        const res = await fetch('/api/bookmarks');
+        if (res.ok) {
+          const body = await res.json();
+          if (!cancelled) setBookmarks(body.bookmarks || []);
+        }
+      } catch (err) {
+        console.error('Failed to load bookmarks:', err);
+      } finally {
+        if (!cancelled) setBookmarksLoading(false);
+      }
+    }
+
+    async function loadSolved() {
+      try {
+        const { data } = await supabase
+          .from('user_progress')
+          .select('coding_problems(difficulty)')
+          .eq('user_id', user.id)
+          .eq('status', 'solved');
+        const counts = { Easy: 0, Medium: 0, Hard: 0 };
+        (data || []).forEach((row) => {
+          const d = row.coding_problems?.difficulty;
+          if (d in counts) counts[d] += 1;
+        });
+        if (!cancelled) setSolvedByDifficulty(counts);
+      } catch (err) {
+        console.error('Failed to load solved counts:', err);
+      }
+    }
+
+    async function loadContests() {
+      try {
+        const { data } = await supabase
+          .from('leaderboard_entries')
+          .select('score, problems_solved, last_submission_at, contests(id, title, start_time)')
+          .eq('user_id', user.id)
+          .order('last_submission_at', { ascending: false })
+          .limit(10);
+        if (!cancelled) setContestHistory((data || []).filter((row) => row.contests));
+      } catch (err) {
+        console.error('Failed to load contest history:', err);
+      } finally {
+        if (!cancelled) setContestsLoading(false);
+      }
+    }
+
+    loadSubs();
+    loadStreaks();
+    loadBookmarks();
+    loadSolved();
+    loadContests();
+    return () => { cancelled = true; };
   }, [user, supabase]);
 
   const handleSave = async () => {
@@ -95,6 +156,10 @@ export default function ProfilePage() {
     }
   };
 
+  if (authLoading) {
+    return <div className="loading-container"><div className="spinner" /></div>;
+  }
+
   if (!user) {
     return (
       <div className="profile animate-fade-in">
@@ -103,6 +168,11 @@ export default function ProfilePage() {
     );
   }
 
+  const joinedAt = profile?.created_at || user.created_at;
+  const joinDate = joinedAt
+    ? new Date(joinedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    : null;
+  const solvedTotal = solvedByDifficulty.Easy + solvedByDifficulty.Medium + solvedByDifficulty.Hard;
   const userBadges = profile?.badges || [];
   const allBadges = BADGES.ALL.map((b) => ({ ...b, earned: userBadges.includes(b.id) }));
 
@@ -121,19 +191,7 @@ export default function ProfilePage() {
       {/* Header Card */}
       <div className="card profile__hero">
         <div className="flex gap-lg" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="profile__avatar" style={{
-            width: 96, height: 96, borderRadius: '50%',
-            background: 'var(--accent-gradient)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontWeight: 700, fontSize: '2rem',
-            overflow: 'hidden', flexShrink: 0,
-          }}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              (profile?.full_name || 'U')[0].toUpperCase()
-            )}
-          </div>
+          <Avatar user={user} profile={profile} size={96} className="profile__avatar" />
 
           <div style={{ flex: 1 }}>
             {editing ? (
@@ -151,12 +209,13 @@ export default function ProfilePage() {
             ) : (
               <>
                 <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-                  <h2 style={{ margin: 0 }}>{profile?.full_name || 'User'}</h2>
+                  <h2 style={{ margin: 0 }}>{getDisplayName(user, profile)}</h2>
                   <button className="btn btn--ghost btn--sm" onClick={() => setEditing(true)}><HiPencil size={14} /></button>
                 </div>
                 {profile?.username && <p className="text-muted">@{profile.username}</p>}
                 {profile?.bio && <p className="text-sm" style={{ marginTop: 'var(--space-xs)', color: 'var(--text-secondary)' }}>{profile.bio}</p>}
                 <p className="text-sm text-muted" style={{ marginTop: 'var(--space-xs)' }}>{user.email}</p>
+                {joinDate && <p className="text-sm text-muted">Joined {joinDate}</p>}
               </>
             )}
           </div>
@@ -184,6 +243,28 @@ export default function ProfilePage() {
           </div>
         ))}
       </div>
+
+      {/* Solved by difficulty */}
+      <section className="card" aria-labelledby="solved-title">
+        <h2 id="solved-title" className="profile-section-title"><HiCode size={18} aria-hidden="true" /> Problems solved</h2>
+        <dl className="profile-difficulty">
+          {[
+            ['Easy', 'var(--success)'],
+            ['Medium', 'var(--warning)'],
+            ['Hard', 'var(--danger)'],
+          ].map(([label, color]) => (
+            <div key={label} className="profile-difficulty__row">
+              <dt>{label}</dt>
+              <dd>
+                <span className="profile-difficulty__bar" aria-hidden="true">
+                  <span style={{ width: `${solvedTotal ? (solvedByDifficulty[label] / solvedTotal) * 100 : 0}%`, background: color }} />
+                </span>
+                <span className="profile-difficulty__count">{solvedByDifficulty[label]}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {/* Streak Calendar */}
       <section className="card" aria-labelledby="streak-title">
@@ -221,6 +302,27 @@ export default function ProfilePage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Contest history */}
+      <section className="card" aria-labelledby="contest-history-title" style={{ marginBottom: 'var(--space-xl)' }}>
+        <h2 id="contest-history-title" className="profile-section-title"><HiTrophy size={18} aria-hidden="true" /> Contest history</h2>
+        {contestsLoading ? (
+          <div className="loading-container"><div className="spinner" /></div>
+        ) : contestHistory.length === 0 ? (
+          <p className="text-muted">No contests yet. <Link href="/contests">See upcoming contests</Link>.</p>
+        ) : (
+          <ul className="profile-contests">
+            {contestHistory.map((row) => (
+              <li key={row.contests.id} className="flex-between profile-contests__row">
+                <Link href={`/contests/${row.contests.id}`}>{row.contests.title}</Link>
+                <span className="text-sm text-muted">
+                  {row.problems_solved} solved · {row.score} pts
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Bookmarked Problems */}

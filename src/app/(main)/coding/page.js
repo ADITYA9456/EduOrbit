@@ -153,12 +153,18 @@ export default function CodingPracticePage() {
     e.stopPropagation();
     if (!user) return toast.error('Sign in to bookmark');
 
-    const res = await fetch('/api/bookmarks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId }),
-    });
-    const data = await res.json();
+    let data;
+    try {
+      const res = await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId }),
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update bookmark');
+    } catch (err) {
+      return toast.error(err.message);
+    }
     if (data.bookmarked) {
       setBookmarkSet((prev) => new Set([...prev, questionId]));
       toast.success('Bookmarked!');
