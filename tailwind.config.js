@@ -12,7 +12,18 @@ module.exports = {
   },
 
   theme: {
-    extend: {},
+    extend: {
+      // Tokens live in globals.css / premium.css; Tailwind just references them.
+      colors: {
+        accent: 'var(--accent-primary)',
+        'accent-2': 'var(--accent-secondary)',
+        surface: 'var(--bg-secondary)',
+        'surface-2': 'var(--bg-tertiary)',
+        ink: 'var(--text-primary)',
+        'ink-muted': 'var(--text-muted)',
+        line: 'var(--border-color)',
+      },
+    },
   },
   plugins: [],
 };

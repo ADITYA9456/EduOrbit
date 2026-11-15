@@ -1,5 +1,6 @@
 'use client';
 
+import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import { useState } from 'react';
@@ -14,6 +15,7 @@ export default function MainLayout({ children }) {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className={`layout__content ${sidebarOpen ? 'layout__content--sidebar-open' : ''}`}>
           {children}
+          <Footer />
         </main>
       </div>
     </div>

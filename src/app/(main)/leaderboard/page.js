@@ -1,6 +1,7 @@
 'use client';
 
 import EmptyState from '@/components/ui/EmptyState';
+import { useAuth } from '@/context/AuthProvider';
 import { useRealtimeLeaderboard } from '@/hooks/useRealtime';
 import { createClient } from '@/lib/supabase/client';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,6 +10,7 @@ import { HiTrophy } from 'react-icons/hi2';
 
 export default function LeaderboardPage() {
   const supabase = createClient();
+  const { user } = useAuth();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,10 @@ export default function LeaderboardPage() {
       </div>
 
       {loading ? (
-        <div className="loading-container"><div className="spinner" /></div>
+        <div className="route-loading">
+          <div className="skeleton route-loading__card" />
+          <div className="skeleton route-loading__card" />
+        </div>
       ) : users.length === 0 ? (
         <EmptyState icon={<HiTrophy size={48} />} title="No users yet" message="Be the first to earn points!" />
       ) : (
@@ -118,8 +123,8 @@ export default function LeaderboardPage() {
           </div>
 
           {/* Rest of leaderboard */}
-          <div className="leaderboard__table" style={{ marginTop: 'var(--space-xl)' }}>
-            <div className="leaderboard__row leaderboard__row--header">
+          <div className="leaderboard__table" role="table" aria-label="Leaderboard rankings" style={{ marginTop: 'var(--space-xl)' }}>
+            <div className="leaderboard__row leaderboard__row--header" role="row">
               <span style={{ width: 50 }}>Rank</span>
               <span style={{ flex: 1 }}>User</span>
               <span style={{ width: 100, textAlign: 'center' }}>Points</span>
@@ -128,7 +133,7 @@ export default function LeaderboardPage() {
               <span style={{ width: 80, textAlign: 'center' }}>Badges</span>
             </div>
             {rest.map((u, i) => (
-              <div key={u.id} className="leaderboard__row">
+              <div key={u.id} role="row" className={`leaderboard__row ${u.id === user?.id ? 'leaderboard__row--me' : ''}`}>
                 <span style={{ width: 50, fontWeight: 600 }}>{i + 4}</span>
                 <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <div style={{
