@@ -2,17 +2,21 @@
 
 import DifficultyBadge from '@/components/coding/DifficultyBadge';
 import EditorFrame from '@/components/coding/EditorFrame';
+import JudgeConsole from '@/components/coding/judge/JudgeConsole';
+import ShortcutsDialog from '@/components/coding/judge/ShortcutsDialog';
+import { formatMemory, formatRuntime, verdictLabel, VERDICT_META } from '@/components/coding/judge/verdicts';
 import { defineEduorbitThemes, useEditorTheme } from '@/components/coding/monacoTheme';
 import Badge from '@/components/ui/Badge';
 import Tabs from '@/components/ui/Tabs';
 import { useAuth } from '@/context/AuthProvider';
-import { useRealtimeSubmissions } from '@/hooks/useRealtime';
+import { useJudgeRunner } from '@/hooks/useJudgeRunner';
 import { useStreak } from '@/hooks/useStreak';
 import { CODING } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
     HiBookmark,
@@ -23,28 +27,28 @@ import {
     HiLightBulb,
     HiLightningBolt,
     HiPlay,
+    HiQuestionMarkCircle,
     HiXCircle,
 } from 'react-icons/hi';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
+const JUDGE_LANGS = ['javascript', 'python', 'java', 'cpp', 'c'];
+const LANG_KEY = 'eduorbite-lang';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const DEFAULT_CODE = {
-  javascript: '// Write your solution here\nfunction solution(input) {\n  \n}\n',
-  python: '# Write your solution here\ndef solution(input):\n    pass\n',
-  java: 'public class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n',
-  sql: '-- Write your SQL query here\nSELECT ',
-  cpp: '// Write your solution here\n#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n',
-  c: '// Write your solution here\n#include <stdio.h>\n\nint main(void) {\n    return 0;\n}\n',
+  javascript: "const lines = require('fs').readFileSync(0, 'utf8').split('\\n');\n// TODO: solve, then console.log the answer\n",
+  python: "import sys\n\nlines = sys.stdin.read().split('\\n')\n# TODO: solve, then print the answer\n",
+  java: 'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner in = new Scanner(System.in);\n        // TODO: solve, then print the answer\n    }\n}\n',
+  cpp: '#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // TODO: read with cin, solve, print the answer\n    return 0;\n}\n',
+  c: '#include <stdio.h>\n\nint main(void) {\n    /* TODO: read with scanf, solve, print the answer */\n    return 0;\n}\n',
 };
 
-const LANG_MONACO = {
-  javascript: 'javascript',
-  python: 'python',
-  java: 'java',
-  sql: 'sql',
-  cpp: 'cpp',
-  c: 'c',
-};
+const LANG_MONACO = { javascript: 'javascript', python: 'python', java: 'java', cpp: 'cpp', c: 'c' };
+
+const PROBLEM_COLUMNS =
+  'id,title,slug,description,difficulty,category,type,tags,starter_code,examples,constraints,mcq_options,correct_answer,points,input_format,output_format,editorial,judged,time_limit_ms,memory_limit_kb';
 
 const AI_HINTS = [
   'Think about the data structure that gives you O(1) lookup time.',
@@ -60,18 +64,20 @@ const AI_HINTS = [
 export default function ProblemPage() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawContest = searchParams.get('contest');
+  const contestId = rawContest && UUID.test(rawContest) ? rawContest : null;
+
   const supabase = createClient();
   const { user } = useAuth();
-  const { recordActivity } = useStreak(user?.id);
+  const userId = user?.id ?? null;
+  const { recordActivity } = useStreak(userId);
   const editorTheme = useEditorTheme();
 
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState('javascript');
-  const [code, setCode] = useState(DEFAULT_CODE.javascript);
-  const [submitting, setSubmitting] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState(null);
+  const [language, setLanguage] = useState('python');
+  const [code, setCode] = useState('');
   const [activeTab, setActiveTab] = useState('description');
   const [submissions, setSubmissions] = useState([]);
   const [subsLoading, setSubsLoading] = useState(false);
@@ -80,145 +86,256 @@ export default function ProblemPage() {
   const [hint, setHint] = useState('');
   const [mcqAnswer, setMcqAnswer] = useState('');
   const [mcqResult, setMcqResult] = useState(null);
-  const [testOutput, setTestOutput] = useState(null);
+  const [samples, setSamples] = useState([]);
+  const [consoleTab, setConsoleTab] = useState('results');
+  const [customInput, setCustomInput] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  const editorRef = useRef(null);
+  const codeByLang = useRef({});
+  const codeRef = useRef('');
+  const languageRef = useRef('python');
+  codeRef.current = code;
+  languageRef.current = language;
+
+  const judge = useJudgeRunner({ problemId: problem?.id, contestId });
+
+  // ---------------------------------------------------------------- load problem
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       setLoading(true);
-
-      // Try slug first, fallback to id
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(id);
-      let query;
-      if (isUUID) {
-        query = supabase.from('coding_problems').select('*').eq('id', id);
-      } else {
-        query = supabase.from('coding_problems').select('*').eq('slug', id);
+      const column = UUID.test(id) ? 'id' : 'slug';
+      let { data, error } = await supabase.from('coding_problems').select(PROBLEM_COLUMNS).eq(column, id).maybeSingle();
+      if (error) {
+        // Columns from migration 001 may not exist yet on this database.
+        ({ data } = await supabase.from('coding_problems').select('*').eq(column, id).maybeSingle());
       }
-
-      const { data } = await query.single();
-
+      if (cancelled) return;
       if (data) {
-        setProblem(data);
-        // Determine available languages
-        const starterKeys = Object.keys(data.starter_code || {});
-        const defaultLang = starterKeys[0] || (data.type === 'sql' ? 'sql' : 'javascript');
-        setLanguage(defaultLang);
-        setCode(data.starter_code?.[defaultLang] || DEFAULT_CODE[defaultLang] || '');
+        const { test_cases: _legacyTests, ...safe } = data;
+        setProblem(safe);
       }
-
-      // Check bookmark status
-      if (user && data) {
-        const { data: bm } = await supabase
-          .from('bookmarks')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('question_id', data.id)
-          .single();
-        setBookmarked(!!bm);
-      }
-
       setLoading(false);
     }
-    load();
-  }, [id, supabase, user]);
+    load().catch((err) => {
+      console.error('Failed to load problem:', err);
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [id, supabase]);
+
+  const langOptions = CODING.LANGUAGES.filter((l) => JUDGE_LANGS.includes(l.id));
+  const isCodeProblem = problem && problem.type !== 'mcq';
+  const judgeable = !!problem && problem.type === 'code' && problem.judged === true;
+
+  const starterFor = useCallback(
+    (lang) => problem?.starter_code?.[lang] || DEFAULT_CODE[lang] || '',
+    [problem]
+  );
+
+  // Code for a language: in-memory edit, else saved draft, else starter.
+  const loadCodeFor = useCallback(async (lang) => {
+    if (codeByLang.current[lang] != null) {
+      setCode(codeByLang.current[lang]);
+      return;
+    }
+    let initial = starterFor(lang);
+    if (userId && problem) {
+      try {
+        const { data } = await supabase
+          .from('judge_drafts')
+          .select('code')
+          .eq('user_id', userId)
+          .eq('problem_id', problem.id)
+          .eq('language', lang)
+          .maybeSingle();
+        if (data?.code) initial = data.code;
+      } catch { /* drafts are optional */ }
+    }
+    if (languageRef.current === lang && codeByLang.current[lang] == null) {
+      codeByLang.current[lang] = initial;
+      setCode(initial);
+    }
+  }, [problem, userId, supabase, starterFor]);
+
+  // Pick the initial language once the problem is known.
+  useEffect(() => {
+    if (!problem || problem.type === 'mcq') return;
+    let preferred = null;
+    try { preferred = localStorage.getItem(LANG_KEY); } catch { /* storage blocked */ }
+    const fromStarters = Object.keys(problem.starter_code || {}).find((l) => JUDGE_LANGS.includes(l));
+    const first = JUDGE_LANGS.includes(preferred) ? preferred : fromStarters || 'python';
+    codeByLang.current = {};
+    languageRef.current = first;
+    setLanguage(first);
+    loadCodeFor(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [problem?.id, userId]);
+
+  // Sample tests are public by RLS.
+  useEffect(() => {
+    if (!problem || !judgeable) { setSamples([]); return; }
+    let cancelled = false;
+    supabase
+      .from('problem_tests')
+      .select('position, input, expected_output')
+      .eq('problem_id', problem.id)
+      .eq('is_sample', true)
+      .order('position')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setSamples(data || []);
+        setCustomInput((prev) => prev || data?.[0]?.input || '');
+      });
+    return () => { cancelled = true; };
+  }, [problem, judgeable, supabase]);
+
+  useEffect(() => {
+    if (!userId || !problem) { setBookmarked(false); return; }
+    supabase
+      .from('bookmarks')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('question_id', problem.id)
+      .maybeSingle()
+      .then(({ data }) => setBookmarked(!!data));
+  }, [userId, problem, supabase]);
 
   const handleLangChange = (lang) => {
+    codeByLang.current[languageRef.current] = codeRef.current;
+    languageRef.current = lang;
     setLanguage(lang);
-    if (problem?.starter_code?.[lang]) {
-      setCode(problem.starter_code[lang]);
-    } else {
-      setCode(DEFAULT_CODE[lang] || '');
-    }
-    setResult(null);
-    setTestOutput(null);
+    judge.clear();
+    try { localStorage.setItem(LANG_KEY, lang); } catch { /* ignore */ }
+    loadCodeFor(lang);
   };
 
+  const handleCodeChange = (val) => {
+    const next = val || '';
+    codeByLang.current[languageRef.current] = next;
+    setCode(next);
+  };
+
+  // ---------------------------------------------------------------- submissions
   const loadSubmissions = useCallback(async () => {
-    if (!user || !problem) return;
+    if (!userId || !problem) return;
     setSubsLoading(true);
-    const { data } = await supabase
-      .from('submissions')
-      .select('*')
-      .eq('problem_id', problem.id)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    setSubmissions(data || []);
-    setSubsLoading(false);
-  }, [problem, user, supabase]);
+    try {
+      const { data } = await supabase
+        .from('judge_submissions')
+        .select('id, language, verdict, passed_count, total_count, runtime_ms, memory_kb, code, points_earned, created_at')
+        .eq('user_id', userId)
+        .eq('problem_id', problem.id)
+        .eq('kind', 'submit')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      setSubmissions(data || []);
+    } catch (err) {
+      console.error('Failed to load submissions:', err);
+    } finally {
+      setSubsLoading(false);
+    }
+  }, [userId, problem, supabase]);
 
   useEffect(() => {
     if (activeTab === 'submissions') loadSubmissions();
   }, [activeTab, loadSubmissions]);
 
-  // Realtime submission updates
-  useRealtimeSubmissions(user?.id, useCallback((payload) => {
-    if (payload.eventType === 'INSERT' && payload.new?.problem_id === problem?.id) {
-      setSubmissions((prev) => [payload.new, ...prev]);
+  // ---------------------------------------------------------------- actions
+  const requireReady = useCallback(() => {
+    if (!userId) { toast.error('Sign in to run code'); return false; }
+    if (!judgeable) { toast.error('This problem has no judge tests yet'); return false; }
+    if (!judge.config.configured) { toast.error('The code judge is not configured'); return false; }
+    if (!codeRef.current.trim()) { toast.error('Write some code first'); return false; }
+    return true;
+  }, [userId, judgeable, judge.config.configured]);
+
+  const handleRun = useCallback(async () => {
+    if (!requireReady()) return;
+    const custom = consoleTab === 'custom';
+    await judge.run(languageRef.current, codeRef.current, custom ? customInput : undefined);
+  }, [requireReady, judge, consoleTab, customInput]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!requireReady()) return;
+    setConsoleTab('results');
+    const data = await judge.submit(languageRef.current, codeRef.current);
+    if (!data) return;
+    if (data.verdict === 'accepted') {
+      toast.success(data.pointsEarned > 0 ? `Accepted! +${data.pointsEarned} pts` : 'Accepted!');
+      recordActivity();
+    } else {
+      toast.error(`${verdictLabel(data.verdict)}: ${data.passed}/${data.total} tests passed`);
     }
-  }, [problem?.id]));
+    if (activeTab === 'submissions') loadSubmissions();
+  }, [requireReady, judge, recordActivity, activeTab, loadSubmissions]);
 
-  const handleRunCode = async () => {
-    if (!code.trim()) return toast.error('Write some code first');
-    setRunning(true);
-    setTestOutput(null);
+  const saveDraft = useCallback(async () => {
+    if (!userId || !problem) return toast.error('Sign in to save drafts');
+    setSaving(true);
+    const { error } = await supabase.from('judge_drafts').upsert(
+      {
+        user_id: userId,
+        problem_id: problem.id,
+        language: languageRef.current,
+        code: codeRef.current,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,problem_id,language' }
+    );
+    setSaving(false);
+    if (error) {
+      console.error('Draft save failed:', error.message);
+      return toast.error('Could not save the draft');
+    }
+    toast.success('Draft saved');
+  }, [userId, problem, supabase]);
 
-    // Mock run — test against first 2 test cases only
-    const testCases = (problem?.test_cases || []).slice(0, 2);
-    const mockResults = testCases.map((tc) => ({
-      input: tc.input,
-      expected: tc.expectedOutput || tc.expected_output,
-      passed: code.length > 30,
-    }));
+  const formatCode = useCallback(() => {
+    const action = editorRef.current?.getAction('editor.action.formatDocument');
+    if (action && action.isSupported()) action.run();
+    else toast('No formatter is available for this language');
+  }, []);
 
-    await new Promise((r) => setTimeout(r, 800));
-    setTestOutput(mockResults);
-    setRunning(false);
+  // Latest handlers for Monaco commands and the window listener (both are registered once).
+  const actions = useRef({});
+  actions.current = { run: handleRun, submit: handleSubmit, save: saveDraft, format: formatCode, help: () => setHelpOpen(true) };
+
+  const handleEditorMount = (editor, monaco) => {
+    editorRef.current = editor;
+    const { KeyMod, KeyCode } = monaco;
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.Enter, () => actions.current.run());
+    editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Enter, () => actions.current.submit());
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyS, () => actions.current.save());
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.Slash, () => editor.trigger('keyboard', 'editor.action.commentLine', null));
+    editor.addCommand(KeyMod.Shift | KeyMod.Alt | KeyCode.KeyF, () => actions.current.format());
   };
 
-  const handleSubmit = async () => {
-    if (!user) return toast.error('Sign in to submit');
-    if (!code.trim() && problem?.type !== 'mcq') return toast.error('Write some code first');
-
-    setSubmitting(true);
-    setResult(null);
-    try {
-      const res = await fetch('/api/coding/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ problemId: problem.id, language, code }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submission failed');
-
-      setResult(data);
-
-      // Update progress
-      await fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionId: problem.id,
-          status: data.status === 'accepted' ? 'solved' : 'attempted',
-          languageUsed: language,
-          score: data.pointsEarned || 0,
-          submittedCode: code,
-        }),
-      });
-
-      if (data.status === 'accepted') {
-        toast.success(`All tests passed! +${data.pointsEarned} pts`);
-        recordActivity();
-      } else {
-        const tr = data.testResults;
-        toast.error(tr ? `Wrong answer: ${tr.passed}/${tr.total} tests passed` : 'Some tests failed');
+  // Shortcuts when focus is outside the editor. Monaco calls preventDefault on keys it handled.
+  useEffect(() => {
+    if (!isCodeProblem) return undefined;
+    const onKey = (e) => {
+      if (e.defaultPrevented) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) actions.current.submit(); else actions.current.run();
+      } else if (mod && !e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault(); // stop the browser's Save Page dialog
+        actions.current.save();
+      } else if (e.key === '?' && !mod && !e.altKey) {
+        const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
+        if (!typing) {
+          e.preventDefault();
+          actions.current.help();
+        }
       }
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isCodeProblem]);
 
   const handleMCQSubmit = async () => {
     if (!user) return toast.error('Sign in to submit');
@@ -277,12 +394,6 @@ export default function ProblemPage() {
 
   if (loading) return <div className="loading-container"><div className="spinner" /></div>;
   if (!problem) return <div className="loading-container"><p>Problem not found</p></div>;
-
-  // Get available languages from starter_code
-  const availableLangs = Object.keys(problem.starter_code || {});
-  const langOptions = availableLangs.length > 0
-    ? CODING.LANGUAGES.filter((l) => availableLangs.includes(l.id))
-    : CODING.LANGUAGES;
 
   // MCQ Rendering
   if (problem.type === 'mcq') {
@@ -355,24 +466,30 @@ export default function ProblemPage() {
     );
   }
 
-  // Code / SQL / Project Rendering
+  const tabs = [
+    { id: 'description', label: 'Description' },
+    ...(problem.editorial ? [{ id: 'editorial', label: 'Editorial' }] : []),
+    { id: 'submissions', label: 'My Submissions' },
+  ];
+  const runDisabled = !!judge.busy || !judgeable || !judge.config.configured;
+
   return (
     <div className="problem-detail animate-fade-in">
       {/* Left Panel — Problem */}
       <div className="problem-detail__left">
-        <button className="btn btn--ghost btn--sm" onClick={() => router.push('/coding')} style={{ marginBottom: 'var(--space-md)' }}>
-          <HiChevronLeft size={16} /> Back to Problems
+        <button className="btn btn--ghost btn--sm" onClick={() => router.push(contestId ? `/contests/${contestId}` : '/coding')} style={{ marginBottom: 'var(--space-md)' }}>
+          <HiChevronLeft size={16} /> {contestId ? 'Back to contest' : 'Back to Problems'}
         </button>
 
-        {/* Tabs */}
-        <Tabs
-          tabs={[{ id: 'description', label: 'Description' }, { id: 'submissions', label: 'My Submissions' }]}
-          value={activeTab}
-          onChange={setActiveTab}
-          label="Problem sections"
-        />
+        {contestId && (
+          <p className="judge-note" role="status">
+            Contest mode. <strong>Submit</strong> counts toward the standings while the contest is live. Run is practice only.
+          </p>
+        )}
 
-        {activeTab === 'description' ? (
+        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} label="Problem sections" />
+
+        {activeTab === 'description' && (
           <>
             <div className="problem-head">
               <h1 className="problem-head__title">{problem.title}</h1>
@@ -391,25 +508,38 @@ export default function ProblemPage() {
               </button>
             </div>
 
+            {!judgeable && (
+              <p className="judge-notice judge-notice--warn" role="status">
+                This problem has no judge tests yet, so it can be read but not run or submitted.
+              </p>
+            )}
+
             <div className="problem-description" style={{ lineHeight: 1.8, marginBottom: 'var(--space-xl)' }}>
               <div style={{ whiteSpace: 'pre-wrap' }}>{problem.description}</div>
             </div>
 
-            {/* Examples */}
+            {(problem.input_format || problem.output_format) && (
+              <div className="problem-io">
+                {problem.input_format && <div><h4>Input</h4><p className="problem-io__text">{problem.input_format}</p></div>}
+                {problem.output_format && <div><h4>Output</h4><p className="problem-io__text">{problem.output_format}</p></div>}
+              </div>
+            )}
+
             {problem.examples?.length > 0 && (
               <div style={{ marginBottom: 'var(--space-xl)' }}>
                 <h4>Examples</h4>
                 {problem.examples.map((ex, i) => (
                   <div key={i} className="card example-card">
-                    <p className="text-sm"><strong>Input:</strong> <code>{ex.input}</code></p>
-                    <p className="text-sm"><strong>Output:</strong> <code>{ex.output}</code></p>
+                    <p className="text-sm"><strong>Input</strong></p>
+                    <pre className="example-card__pre">{ex.input}</pre>
+                    <p className="text-sm"><strong>Output</strong></p>
+                    <pre className="example-card__pre">{ex.output}</pre>
                     {ex.explanation && <p className="text-sm text-muted"><strong>Explanation:</strong> {ex.explanation}</p>}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Constraints */}
             {problem.constraints?.length > 0 && (
               <div style={{ marginBottom: 'var(--space-lg)' }}>
                 <h4>Constraints</h4>
@@ -418,10 +548,15 @@ export default function ProblemPage() {
                     <li key={i} className="text-sm" style={{ marginBottom: 4 }}>{c}</li>
                   ))}
                 </ul>
+                {judgeable && (
+                  <p className="text-sm text-muted">
+                    Limits: {(problem.time_limit_ms || 2000) / 1000}s per test, {formatMemory(problem.memory_limit_kb || 262144)} memory.
+                    Java code must use the class name <code>Main</code>.
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Tags */}
             {problem.tags?.length > 0 && (
               <div className="flex gap-xs" style={{ marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
                 {problem.tags.map((t) => (
@@ -430,59 +565,75 @@ export default function ProblemPage() {
               </div>
             )}
 
-            {/* AI Hint */}
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <button className="btn btn--secondary btn--sm" onClick={showAIHint}>
-                <HiLightBulb size={16} /> AI Hint
+                <HiLightBulb size={16} /> Hint
               </button>
               {showHint && (
                 <div className="card hint-card" role="status">
-                  <p className="text-sm"><span aria-hidden="true">💡 </span>{hint}</p>
+                  <p className="text-sm">{hint}</p>
                 </div>
               )}
             </div>
           </>
-        ) : (
-          /* Submissions tab */
+        )}
+
+        {activeTab === 'editorial' && (
+          <div className="problem-description" style={{ lineHeight: 1.8 }}>
+            <h2 className="problem-head__title">{problem.title}: approach</h2>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{problem.editorial}</p>
+          </div>
+        )}
+
+        {activeTab === 'submissions' && (
           <div>
-            {subsLoading ? (
+            {!userId ? (
+              <p className="text-muted"><Link href="/login">Sign in</Link> to see your submissions.</p>
+            ) : subsLoading ? (
               <div className="loading-container"><div className="spinner" /></div>
             ) : submissions.length === 0 ? (
               <p className="text-muted">No submissions yet</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                {submissions.map((s) => (
-                  <div key={s.id} className="card" style={{ padding: 'var(--space-md)' }}>
-                    <div className="flex-between">
-                      <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-                        {s.status === 'accepted' ?
-                          <HiCheckCircle size={18} color="var(--success)" /> :
-                          <HiXCircle size={18} color="var(--danger)" />
-                        }
-                        <strong style={{ color: s.status === 'accepted' ? 'var(--success)' : 'var(--danger)', textTransform: 'capitalize' }}>
-                          {s.status?.replace('_', ' ')}
+              <ul className="judge-history">
+                {submissions.map((s) => {
+                  const ok = s.verdict === 'accepted';
+                  return (
+                    <li key={s.id} className="card judge-history__item">
+                      <div className="flex-between">
+                        <strong className={ok ? 'judge-history__ok' : 'judge-history__bad'}>
+                          {ok ? <HiCheckCircle size={16} aria-hidden="true" /> : <HiXCircle size={16} aria-hidden="true" />}{' '}
+                          {VERDICT_META[s.verdict]?.label || s.verdict}
                         </strong>
+                        <span className="text-sm text-muted">
+                          {s.language} · {new Date(s.created_at).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="flex gap-sm text-sm text-muted">
-                        <span>{s.language}</span>
-                        <span>•</span>
-                        <span>{new Date(s.created_at).toLocaleDateString()}</span>
+                      <div className="text-sm text-muted judge-history__meta">
+                        <span>{s.passed_count}/{s.total_count} tests</span>
+                        <span><HiClock size={14} aria-hidden="true" /> {formatRuntime(s.runtime_ms)}</span>
+                        <span>{formatMemory(s.memory_kb)}</span>
+                        {s.points_earned > 0 && <span className="judge-history__pts">+{s.points_earned} pts</span>}
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => {
+                            if (JUDGE_LANGS.includes(s.language)) {
+                              codeByLang.current[languageRef.current] = codeRef.current;
+                              codeByLang.current[s.language] = s.code;
+                              languageRef.current = s.language;
+                              setLanguage(s.language);
+                              setCode(s.code);
+                              toast.success('Code restored in the editor');
+                            }
+                          }}
+                        >
+                          Restore code
+                        </button>
                       </div>
-                    </div>
-                    {s.execution_time && (
-                      <div className="text-sm text-muted" style={{ marginTop: 4 }}>
-                        <HiClock size={14} /> {s.execution_time}ms
-                        {s.test_results && ` • ${s.test_results.passed || 0}/${s.test_results.total || 0} tests passed`}
-                      </div>
-                    )}
-                    {s.points_earned > 0 && (
-                      <div className="text-sm" style={{ marginTop: 4, color: 'var(--warning)' }}>
-                        +{s.points_earned} points
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
         )}
@@ -490,10 +641,9 @@ export default function ProblemPage() {
 
       {/* Right Panel — Editor */}
       <div className="problem-detail__right">
-        {/* Editor toolbar */}
         <div className="editor-toolbar">
           <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-            <HiCode size={18} />
+            <HiCode size={18} aria-hidden="true" />
             <select
               className="input"
               aria-label="Language"
@@ -508,37 +658,54 @@ export default function ProblemPage() {
           </div>
           <div className="flex gap-sm">
             <button
-              className="btn btn--secondary btn--sm"
-              onClick={handleRunCode}
-              disabled={running}
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => setHelpOpen(true)}
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
             >
-              {running ? (
-                <><HiLightningBolt className="spin" size={14} /> Running...</>
+              <HiQuestionMarkCircle size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={saveDraft} disabled={saving} title="Save draft (Ctrl/Cmd+S)">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={handleRun}
+              disabled={runDisabled}
+              title="Run (Ctrl/Cmd+Enter)"
+            >
+              {judge.busy === 'run' ? (
+                <><HiLightningBolt className="spin" size={14} aria-hidden="true" /> Running…</>
               ) : (
-                <><HiPlay size={14} /> Run Code</>
+                <><HiPlay size={14} aria-hidden="true" /> Run</>
               )}
             </button>
             <button
+              type="button"
               className="btn btn--primary btn--sm"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={runDisabled}
+              title="Submit (Ctrl/Cmd+Shift+Enter)"
             >
-              {submitting ? (
-                <><HiLightningBolt className="spin" size={14} /> Submitting...</>
+              {judge.busy === 'submit' ? (
+                <><HiLightningBolt className="spin" size={14} aria-hidden="true" /> Judging…</>
               ) : (
-                <><HiCheckCircle size={14} /> Submit</>
+                <><HiCheckCircle size={14} aria-hidden="true" /> Submit</>
               )}
             </button>
           </div>
         </div>
 
-        {/* Monaco Editor */}
         <EditorFrame className="editor-container">
           <MonacoEditor
             height="100%"
-            language={LANG_MONACO[language] || 'javascript'}
+            language={LANG_MONACO[language] || 'plaintext'}
+            path={`${problem.id}.${language}`}
             value={code}
-            onChange={(val) => setCode(val || '')}
+            onChange={handleCodeChange}
+            onMount={handleEditorMount}
             beforeMount={defineEduorbitThemes}
             theme={editorTheme}
             options={{
@@ -548,62 +715,28 @@ export default function ProblemPage() {
               scrollBeyondLastLine: false,
               padding: { top: 16 },
               lineNumbers: 'on',
-              tabSize: 2,
+              tabSize: 4,
               automaticLayout: true,
               wordWrap: 'on',
             }}
           />
         </EditorFrame>
 
-        {/* Test Output (Run Code) */}
-        {testOutput && (
-          <div className="editor-results">
-            <h4 style={{ marginBottom: 'var(--space-sm)' }}>Test Results (Run)</h4>
-            {testOutput.map((t, i) => (
-              <div key={i} className={`test-line ${t.passed ? 'test-line--pass' : 'test-line--fail'}`}>
-                {t.passed ? <HiCheckCircle size={16} aria-label="Passed" /> : <HiXCircle size={16} aria-label="Failed" />}
-                <span className="text-sm">Test {i + 1}: <code>{t.input}</code></span>
-                <span className="text-sm text-muted">→ Expected: <code>{t.expected}</code></span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Submit Results */}
-        {result && (
-          <div className="editor-results">
-            <div className="result-head">
-              <div className={`result-head__status ${result.status === 'accepted' ? 'result-head__status--ok' : 'result-head__status--bad'}`}>
-                {result.status === 'accepted' ?
-                  <HiCheckCircle size={22} aria-hidden="true" /> :
-                  <HiXCircle size={22} aria-hidden="true" />
-                }
-                <strong>{result.status === 'accepted' ? 'Accepted' : 'Wrong Answer'}</strong>
-              </div>
-              <div className="result-head__meta">
-                {result.executionTime && <span><HiClock size={14} aria-hidden="true" /> {result.executionTime}ms</span>}
-                {result.testResults && <span>{result.testResults.passed}/{result.testResults.total} passed</span>}
-                {result.pointsEarned > 0 && <span className="result-head__pts">+{result.pointsEarned} pts</span>}
-              </div>
-            </div>
-
-            {result.testResults?.details?.map((t, i) => (
-              <div key={i} className={`test-line ${t.passed ? 'test-line--pass' : 'test-line--fail'}`}>
-                {t.passed ?
-                  <HiCheckCircle size={16} aria-hidden="true" /> :
-                  <HiXCircle size={16} aria-hidden="true" />
-                }
-                <span className="text-sm">
-                  Test {i + 1}: {t.passed ? 'Passed' : 'Failed'}
-                </span>
-                {!t.passed && t.expected && (
-                  <span className="text-sm text-muted"> — Expected: <code>{t.expected}</code></span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <JudgeConsole
+          tab={consoleTab}
+          onTab={setConsoleTab}
+          busy={judge.busy}
+          result={judge.result}
+          error={judge.error}
+          config={judge.config}
+          samples={samples}
+          customInput={customInput}
+          onCustomInput={setCustomInput}
+          signedIn={!!userId}
+        />
       </div>
+
+      <ShortcutsDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
