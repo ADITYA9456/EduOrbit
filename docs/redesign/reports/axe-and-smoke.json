@@ -1,0 +1,215 @@
+[
+  {
+    "route": "/home",
+    "final": "/home",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ],
+      "light": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 5,
+          "sample": ".category-pill--active"
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": ".vlist-item--active > .vlist-item__info > .vlist-item__title"
+        }
+      ]
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/shorts",
+    "final": "/shorts",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ],
+      "light": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "sample": ".category-pill--active"
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "sample": "h3"
+        }
+      ]
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/coding",
+    "final": "/coding",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/practice",
+    "final": "/practice",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/contests",
+    "final": "/contests",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/leaderboard",
+    "final": "/leaderboard",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/login",
+    "final": "/login",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/signup",
+    "final": "/signup",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/upload",
+    "final": "/login",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/profile",
+    "final": "/login",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/admin",
+    "final": "/login",
+    "status": 200,
+    "consoleErrors": [],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  },
+  {
+    "route": "/does-not-exist",
+    "final": "/does-not-exist",
+    "status": 404,
+    "consoleErrors": [
+      "desktop/dark: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "mobile/dark: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "desktop/light: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "mobile/light: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "axe": {
+      "dark": [],
+      "light": []
+    },
+    "motion": {
+      "infiniteAnimations": 0,
+      "partiallyTransparent": 0
+    }
+  }
+]

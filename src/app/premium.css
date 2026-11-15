@@ -413,6 +413,14 @@ h3, h4 { letter-spacing: -0.015em; }
   .layout__content { padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
 }
 
+/* Keep the footer below the first screen so late-loading content never pushes it (CLS) */
+.layout__content {
+  min-height: calc(100vh - var(--header-height)); min-height: calc(100svh - var(--header-height));
+  display: flex; flex-direction: column;
+}
+.layout__content > .layout__inner:first-child { flex: 1 0 auto; }
+.layout__content > .layout__footer { flex-shrink: 0; }
+
 /* Slim footer */
 .site-footer {
   margin-top: var(--space-3xl); padding: var(--space-xl) 0 var(--space-lg);
@@ -438,6 +446,9 @@ h3, h4 { letter-spacing: -0.015em; }
   --accent-primary: #2f5fe0;
 }
 [data-theme="light"] .lp-pill--solid:hover { background: var(--accent-primary); }
+/* Active tabs sit white text on the (AA-safe) gradient instead of the lighter accent colour */
+.coding__category-tab--active, .coding__category-tab--active:hover,
+.admin-tab--active, .btn--primary { background: var(--accent-gradient); border-color: transparent; }
 /* Links inside running text must not rely on colour alone */
 .auth-card__footer a, .form-hint a, .link-btn { text-decoration: underline; text-underline-offset: 3px; }
 /* The search box carries an inline display:flex, so hiding it on small screens needs !important */

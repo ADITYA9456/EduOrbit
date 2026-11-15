@@ -129,7 +129,7 @@ export default function AISummaryPanel({ video }) {
             <span>📋</span>
             <span>Chapters</span>
           </div>
-          <div className="ai-panel__timestamps">
+          <div className="ai-panel__timestamps" tabIndex={0} role="region" aria-label="Video timestamps">
             {summary.timestamps.map((ts, i) => (
               <div key={i} className="ai-panel__ts-item">
                 <span className="ai-panel__ts-time">{ts.time}</span>

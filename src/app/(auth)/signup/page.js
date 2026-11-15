@@ -93,7 +93,7 @@ export default function SignupPage() {
       <div className="auth-card">
         <div className="auth-card__header">
           <div className="auth-card__logo"><span className="logo-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" /></svg></span></div>
-          <h2 className="auth-card__title">Create Account</h2>
+          <h1 className="auth-card__title">Create Account</h1>
           <p className="auth-card__subtitle">Join the learning revolution</p>
         </div>
 

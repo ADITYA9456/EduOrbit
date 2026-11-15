@@ -1,0 +1,47 @@
+[
+  {
+    "route": "/home",
+    "finalUrl": "/home",
+    "perf": 30,
+    "a11y": 95,
+    "bp": 96,
+    "lcpMs": 7235,
+    "cls": 0,
+    "tbtMs": 4678,
+    "lcpElement": null,
+    "failedA11y": [
+      "color-contrast",
+      "heading-order"
+    ]
+  },
+  {
+    "route": "/coding",
+    "finalUrl": "/coding",
+    "perf": 39,
+    "a11y": 94,
+    "bp": 100,
+    "lcpMs": 4217,
+    "cls": 0,
+    "tbtMs": 1531,
+    "lcpElement": null,
+    "failedA11y": [
+      "color-contrast",
+      "heading-order"
+    ]
+  },
+  {
+    "route": "/video/dQw4w9WgXcQ",
+    "finalUrl": "/video/dQw4w9WgXcQ",
+    "perf": 52,
+    "a11y": 94,
+    "bp": 96,
+    "lcpMs": 1532,
+    "cls": 0,
+    "tbtMs": 1268,
+    "lcpElement": null,
+    "failedA11y": [
+      "color-contrast",
+      "heading-order"
+    ]
+  }
+]

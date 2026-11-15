@@ -141,7 +141,7 @@ export default function ShortsPage() {
 
   return (
     <div className="animate-fade-in">
-      <h2 style={{ marginBottom: 'var(--space-lg)' }}>Shorts</h2>
+      <h1 style={{ marginBottom: 'var(--space-lg)' }}>Shorts</h1>
 
       <CategoryPills active={category} onChange={handleCategoryChange} />
 

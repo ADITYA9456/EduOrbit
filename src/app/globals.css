@@ -37,7 +37,7 @@
   --accent-primary: #5b8cff;
   --accent-secondary: #a066ff;
   --accent-tertiary: #22d3ee;
-  --accent-gradient: linear-gradient(135deg, #5b8cff 0%, #a066ff 100%);
+  --accent-gradient: linear-gradient(135deg, #3f6df0 0%, #8a4df0 100%);
   --accent-gradient-wide: linear-gradient(110deg, #22d3ee 0%, #5b8cff 35%, #a066ff 70%, #ff7ad9 100%);
   --glass-bg: rgba(13, 18, 32, 0.62);
   --glass-border: rgba(255, 255, 255, 0.07);
