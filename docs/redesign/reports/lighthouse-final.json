@@ -1,0 +1,40 @@
+[
+  {
+    "route": "/home",
+    "finalUrl": "/home",
+    "perf": 60,
+    "a11y": 98,
+    "bp": 100,
+    "lcpMs": 483,
+    "cls": 0.003,
+    "tbtMs": 3114,
+    "lcpElement": null,
+    "failedA11y": [
+      "heading-order"
+    ]
+  },
+  {
+    "route": "/coding",
+    "finalUrl": "/coding",
+    "perf": 59,
+    "a11y": 100,
+    "bp": 100,
+    "lcpMs": 1156,
+    "cls": 0,
+    "tbtMs": 2108,
+    "lcpElement": null,
+    "failedA11y": []
+  },
+  {
+    "route": "/video/dQw4w9WgXcQ",
+    "finalUrl": "/video/dQw4w9WgXcQ",
+    "perf": 66,
+    "a11y": 100,
+    "bp": 96,
+    "lcpMs": 977,
+    "cls": 0.065,
+    "tbtMs": 577,
+    "lcpElement": null,
+    "failedA11y": []
+  }
+]

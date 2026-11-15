@@ -34,7 +34,7 @@ export default function Tabs({ tabs, value, onChange, label, children, className
               role="tab"
               id={`${base}-tab-${t.id}`}
               aria-selected={selected}
-              aria-controls={`${base}-panel-${t.id}`}
+              aria-controls={selected && children !== undefined ? `${base}-panel-${t.id}` : undefined}
               tabIndex={selected ? 0 : -1}
               className={`tabs__tab ${selected ? 'tabs__tab--active' : ''}`}
               onClick={() => onChange(t.id)}

@@ -4,12 +4,6 @@
     "axe": {
       "light": [
         {
-          "id": "color-contrast",
-          "impact": "serious",
-          "nodes": 1,
-          "sample": ".category-pill--active"
-        },
-        {
           "id": "heading-order",
           "impact": "moderate",
           "nodes": 1,
@@ -40,12 +34,6 @@
     "axe": {
       "light": [
         {
-          "id": "color-contrast",
-          "impact": "serious",
-          "nodes": 1,
-          "sample": ".category-pill--active"
-        },
-        {
           "id": "heading-order",
           "impact": "moderate",
           "nodes": 1,
@@ -74,28 +62,8 @@
   {
     "route": "/shorts",
     "axe": {
-      "light": [
-        {
-          "id": "color-contrast",
-          "impact": "serious",
-          "nodes": 1,
-          "sample": ".category-pill--active"
-        },
-        {
-          "id": "heading-order",
-          "impact": "moderate",
-          "nodes": 1,
-          "sample": "h3"
-        }
-      ],
-      "dark": [
-        {
-          "id": "heading-order",
-          "impact": "moderate",
-          "nodes": 1,
-          "sample": "h3"
-        }
-      ]
+      "light": [],
+      "dark": []
     },
     "console": [],
     "status": 200,
@@ -254,22 +222,8 @@
   {
     "route": "/video/dQw4w9WgXcQ",
     "axe": {
-      "light": [
-        {
-          "id": "heading-order",
-          "impact": "moderate",
-          "nodes": 1,
-          "sample": "h3"
-        }
-      ],
-      "dark": [
-        {
-          "id": "heading-order",
-          "impact": "moderate",
-          "nodes": 1,
-          "sample": "h3"
-        }
-      ]
+      "light": [],
+      "dark": []
     },
     "console": [],
     "status": 200,

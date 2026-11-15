@@ -18,7 +18,6 @@ export default function ShortsTile({ video, isSelected, onSelect, index = 0 }) {
       className={`short-tile vlist-item--entering ${isSelected ? 'short-tile--active' : ''}`}
       style={{ '--i': index % 10 }}
       aria-pressed={!!isSelected}
-      aria-label={`Select short: ${title}`}
       onClick={() => onSelect(video)}
     >
       {thumbnail && !imgError ? (
