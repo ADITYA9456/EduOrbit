@@ -689,3 +689,8 @@ h3, h4 { letter-spacing: -0.015em; }
   .header__center { display: none; }
   .header__left { flex: 1; }
 }
+
+/* ---- Phase H: light-theme contrast fixes (axe color-contrast) ---- */
+[data-theme] .category-pill.category-pill--active, [data-theme] .category-pill.category-pill--active:hover { background: var(--accent-gradient); background-color: var(--accent-primary); color: #fff; }
+[data-theme="light"] .badge--accent { color: #1f48b8; }
+[data-theme="light"] .ai-panel__topic-tag { color: #6d28d9; }
