@@ -143,4 +143,4 @@ Mapped into the Tailwind theme (`tailwind.config.js`): colours `on-accent`, `ove
 ### 8. Before screenshots
 `docs/redesign/before/{route}__{1440|390}__{light|dark}.png` (full page).
 Dynamic routes use a real coding slug when available, a placeholder UUID for `/contests/[id]`, and `dQw4w9WgXcQ` for `/video/[id]`. Login-protected routes were captured **logged out**, so those shots show the login redirect. `/profile`, `/upload`, and `/admin` are therefore identical to the login screenshot (64 files total: 16 routes x 2 widths x 2 themes). Admin and profile views need a signed-in session, which was not available; recapture them after login if the redesign needs "before" shots of those pages.
-The existing server on :3100 (`next start`) was left untouched. Shots came from a separate dev server on :3217.
+Shots were taken from a production build (`next build` + `next start`) of a separate git worktree pinned at `1e69158`, the last commit before any redesign work, so they show the true "before" UI. `/` redirects to `/home`, so the `root` shots match `home`. The database had no coding problems or contests, so list pages show their empty states.
