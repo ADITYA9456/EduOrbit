@@ -19,10 +19,12 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
 
 -- coding_problems
 DROP POLICY IF EXISTS "Service role can manage problems" ON coding_problems;
+DROP POLICY IF EXISTS "Admins manage problems" ON coding_problems;
 CREATE POLICY "Admins manage problems" ON coding_problems FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- contests
 DROP POLICY IF EXISTS "Service role can manage contests" ON contests;
+DROP POLICY IF EXISTS "Admins manage contests" ON contests;
 CREATE POLICY "Admins manage contests" ON contests FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- legacy per-contest leaderboard (the new ranking is computed from contest_submissions)
@@ -30,20 +32,25 @@ DROP POLICY IF EXISTS "Service role can manage leaderboard" ON leaderboard_entri
 
 -- daily challenges
 DROP POLICY IF EXISTS "Service role can manage daily challenges" ON daily_challenges;
+DROP POLICY IF EXISTS "Admins manage daily challenges" ON daily_challenges;
 CREATE POLICY "Admins manage daily challenges" ON daily_challenges FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- videos
 DROP POLICY IF EXISTS "Service role can update videos" ON videos;
+DROP POLICY IF EXISTS "Admins update videos" ON videos;
 CREATE POLICY "Admins update videos" ON videos FOR UPDATE USING (public.is_admin());
 
 -- reports
 DROP POLICY IF EXISTS "Service role can manage reports" ON reports;
 DROP POLICY IF EXISTS "Service role can update reports" ON reports;
+DROP POLICY IF EXISTS "Admins read reports" ON reports;
 CREATE POLICY "Admins read reports" ON reports FOR SELECT USING (public.is_admin() OR auth.uid() = reporter_id);
+DROP POLICY IF EXISTS "Admins update reports" ON reports;
 CREATE POLICY "Admins update reports" ON reports FOR UPDATE USING (public.is_admin());
 
 -- AI verification logs
 DROP POLICY IF EXISTS "Service role can manage ai logs" ON ai_verification_logs;
+DROP POLICY IF EXISTS "Admins manage ai logs" ON ai_verification_logs;
 CREATE POLICY "Admins manage ai logs" ON ai_verification_logs FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- legacy submissions: verdicts are now written only by the server

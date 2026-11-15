@@ -326,7 +326,7 @@ export default function ProblemPage() {
         e.preventDefault(); // stop the browser's Save Page dialog
         actions.current.save();
       } else if (e.key === '?' && !mod && !e.altKey) {
-        const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
+        const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable], .monaco-editor');
         if (!typing) {
           e.preventDefault();
           actions.current.help();
