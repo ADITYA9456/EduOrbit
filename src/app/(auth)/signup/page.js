@@ -92,13 +92,13 @@ export default function SignupPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-card__header">
-          <div className="auth-card__logo">🎓</div>
+          <div className="auth-card__logo"><span className="logo-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" /></svg></span></div>
           <h2 className="auth-card__title">Create Account</h2>
           <p className="auth-card__subtitle">Join the learning revolution</p>
         </div>
 
-        {error && <div className="form-error">{error}</div>}
-        {success && <div className="form-success">{success}</div>}
+        {error && <div className="form-error" role="alert" id="auth-error">{error}</div>}
+        {success && <div className="form-success" role="status">{success}</div>}
 
         {/* Google Sign Up */}
         <button
@@ -136,42 +136,42 @@ export default function SignupPage() {
         {authMethod === 'email' && (
           <form className="auth-form" onSubmit={handleEmailSignup}>
             <div className="form-group">
-              <label>Full Name</label>
+              <label htmlFor="f-full-name-1">Full Name</label>
               <div className="input-wrapper">
                 <HiUser className="input-icon" size={18} />
-                <input className="input input--with-icon" name="fullName" placeholder="John Doe" value={form.fullName} onChange={handleChange} required />
+                <input id="f-full-name-1" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="fullName" placeholder="John Doe" value={form.fullName} onChange={handleChange} required />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Username</label>
+              <label htmlFor="f-username-2">Username</label>
               <div className="input-wrapper">
                 <HiAtSymbol className="input-icon" size={18} />
-                <input className="input input--with-icon" name="username" placeholder="johndoe" value={form.username} onChange={handleChange} required />
+                <input id="f-username-2" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="username" placeholder="johndoe" value={form.username} onChange={handleChange} required />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Email</label>
+              <label htmlFor="f-email-3">Email</label>
               <div className="input-wrapper">
                 <HiMail className="input-icon" size={18} />
-                <input className="input input--with-icon" name="email" type="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required />
+                <input id="f-email-3" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="email" type="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Password</label>
+              <label htmlFor="f-password-4">Password</label>
               <div className="input-wrapper">
                 <HiLockClosed className="input-icon" size={18} />
-                <input className="input input--with-icon" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} required />
+                <input id="f-password-4" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} required />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Confirm Password</label>
+              <label htmlFor="f-confirm-password-5">Confirm Password</label>
               <div className="input-wrapper">
                 <HiLockClosed className="input-icon" size={18} />
-                <input className="input input--with-icon" name="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} required />
+                <input id="f-confirm-password-5" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined} className="input input--with-icon" name="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} required />
               </div>
             </div>
 
@@ -187,10 +187,10 @@ export default function SignupPage() {
             {!otpSent ? (
               <form className="auth-form" onSubmit={handleSendOtp}>
                 <div className="form-group">
-                  <label>Phone Number</label>
+                  <label htmlFor="f-phone-number-6">Phone Number</label>
                   <div className="input-wrapper">
                     <HiPhone className="input-icon" size={18} />
-                    <input
+                    <input id="f-phone-number-6" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
                       className="input input--with-icon"
                       type="tel"
                       placeholder="+91 9876543210"
@@ -208,9 +208,9 @@ export default function SignupPage() {
             ) : (
               <form className="auth-form" onSubmit={handleVerifyOtp}>
                 <div className="form-group">
-                  <label>Enter OTP</label>
+                  <label htmlFor="f-enter-otp-7">Enter OTP</label>
                   <div className="otp-input-group">
-                    <input
+                    <input id="f-enter-otp-7" aria-describedby={error ? 'auth-error' : undefined} aria-invalid={error ? true : undefined}
                       className="input otp-input"
                       type="text"
                       maxLength={6}
