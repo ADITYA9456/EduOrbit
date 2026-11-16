@@ -116,7 +116,7 @@ export default function ContestsPage() {
                 <p className="contest-card__desc">{contest.description?.slice(0, 120) || 'No description'}</p>
 
                 <dl className="contest-card__facts">
-                  <div><dt>Duration</dt><dd>{contest.duration_minutes} min</dd></div>
+                  <div><dt>Duration</dt><dd>{Math.round((new Date(contest.end_time) - new Date(contest.start_time)) / 60000)} min</dd></div>
                   <div><dt>Start</dt><dd>{new Date(contest.start_time).toLocaleString()}</dd></div>
                 </dl>
 

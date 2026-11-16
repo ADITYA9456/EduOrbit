@@ -21,14 +21,38 @@ const jetbrains = JetBrains_Mono({
   variable: '--font-jetbrains',
 });
 
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://eduorbit-prep.vercel.app').replace(/\/+$/, '');
+const SITE_DESCRIPTION =
+  'Curated video lessons, a real code judge with 20 graded problems, timed contests and a leaderboard. Learn it, then prove it in code.';
+
 export const metadata = {
-  title: 'EduOrbite — AI-Powered Learning & Coding Platform',
-  description: 'Premium educational platform with AI-curated videos, coding practice, contests, and gamification.',
-  keywords: ['education', 'coding', 'programming', 'AI', 'learning'],
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  metadataBase: new URL(SITE_URL),
+  title: { default: 'EduOrbite: Learn from video, prove it in code', template: '%s | EduOrbite' },
+  description: SITE_DESCRIPTION,
+  applicationName: 'EduOrbite',
+  keywords: ['coding practice', 'online judge', 'programming contests', 'video lessons', 'learn to code'],
+  alternates: { canonical: '/' },
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: 'website',
+    siteName: 'EduOrbite',
+    url: '/',
+    title: 'EduOrbite: Learn from video, prove it in code',
+    description: SITE_DESCRIPTION,
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'EduOrbite: learn from video, prove it in code' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EduOrbite: Learn from video, prove it in code',
+    description: SITE_DESCRIPTION,
+    images: ['/og.png'],
+  },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: '64x64' }],
+    apple: '/icons/apple-touch-icon.png',
+  },
   appleWebApp: { capable: true, title: 'EduOrbite', statusBarStyle: 'black-translucent' },
 };
-
 export const viewport = {
   themeColor: '#07090f',
   colorScheme: 'dark light',

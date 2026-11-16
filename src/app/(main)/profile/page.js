@@ -55,9 +55,10 @@ export default function ProfilePage() {
     async function loadSubs() {
       try {
         const { data } = await supabase
-          .from('submissions')
-          .select('*, coding_problems(title, difficulty)')
+          .from('judge_submissions')
+          .select('id, language, verdict, runtime_ms, created_at, coding_problems(title, difficulty)')
           .eq('user_id', user.id)
+          .eq('kind', 'submit')
           .order('created_at', { ascending: false })
           .limit(10);
         if (!cancelled) setRecentSubs(data || []);
@@ -98,13 +99,19 @@ export default function ProfilePage() {
 
     async function loadSolved() {
       try {
+        // Counted from server-written verdicts, one per distinct problem.
         const { data } = await supabase
-          .from('user_progress')
-          .select('coding_problems(difficulty)')
+          .from('judge_submissions')
+          .select('problem_id, coding_problems(difficulty)')
           .eq('user_id', user.id)
-          .eq('status', 'solved');
+          .eq('kind', 'submit')
+          .eq('verdict', 'accepted')
+          .limit(1000);
         const counts = { Easy: 0, Medium: 0, Hard: 0 };
+        const seen = new Set();
         (data || []).forEach((row) => {
+          if (seen.has(row.problem_id)) return;
+          seen.add(row.problem_id);
           const d = row.coding_problems?.difficulty;
           if (d in counts) counts[d] += 1;
         });
@@ -368,11 +375,12 @@ export default function ProfilePage() {
             {recentSubs.map((s) => (
               <div key={s.id} className="flex-between" style={{ padding: 'var(--space-sm)', borderBottom: '1px solid var(--border)' }}>
                 <div className="flex gap-sm" style={{ alignItems: 'center' }}>
-                  {s.status === 'accepted' ?
+                  {s.verdict === 'accepted' ?
                     <HiCheckCircle size={16} color="var(--success)" /> :
                     <HiXCircle size={16} color="var(--danger)" />
                   }
                   <span>{s.coding_problems?.title || 'Problem'}</span>
+                  <span className="text-sm text-muted">{s.verdict.replace(/_/g, ' ')}</span>
                 </div>
                 <div className="flex gap-sm text-sm text-muted">
                   <span>{s.language}</span>

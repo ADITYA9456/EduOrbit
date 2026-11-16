@@ -5,7 +5,7 @@ export function getAvatarUrl(user, profile) {
 
 export function getDisplayName(user, profile) {
   const meta = user?.user_metadata || {};
-  return profile?.full_name || meta.full_name || meta.name || user?.email?.split('@')[0] || 'User';
+  return profile?.full_name || meta.full_name || meta.name || profile?.username || user?.email?.split('@')[0] || 'User';
 }
 
 export function getInitials(name) {

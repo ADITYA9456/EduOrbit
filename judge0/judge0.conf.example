@@ -1,0 +1,19 @@
+# Copy to judge0.conf and change every password. Do not commit judge0.conf.
+AUTHN_TOKEN=change-me-long-random-token
+REDIS_HOST=redis
+REDIS_PASSWORD=change-me-redis
+POSTGRES_HOST=db
+POSTGRES_DB=judge0
+POSTGRES_USER=judge0
+POSTGRES_PASSWORD=change-me-postgres
+
+# Limits (seconds / KB). The app asks for per-problem limits and Judge0 enforces these as caps.
+CPU_TIME_LIMIT=5
+MAX_CPU_TIME_LIMIT=15
+WALL_TIME_LIMIT=10
+MAX_WALL_TIME_LIMIT=20
+MEMORY_LIMIT=262144
+MAX_MEMORY_LIMIT=524288
+MAX_PROCESSES_AND_OR_THREADS=60
+ENABLE_NETWORK=false
+ALLOW_ENABLE_NETWORK=false

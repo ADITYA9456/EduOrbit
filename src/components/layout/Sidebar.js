@@ -1,12 +1,14 @@
 'use client';
 
 import { useAuth } from '@/context/AuthProvider';
+import { getSecondApp } from '@/lib/external-apps';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   HiChartBar,
   HiCode,
+  HiExternalLink,
   HiHome,
   HiPlay,
   HiShieldCheck,
@@ -34,6 +36,8 @@ export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
   const { user, isAdmin } = useAuth();
   const asideRef = useRef(null);
+  const secondApp = getSecondApp();
+  const [iconFailed, setIconFailed] = useState(false);
 
   // Move focus into the sidebar when it opens so keyboard users land on its links
   useEffect(() => {
@@ -108,6 +112,36 @@ export default function Sidebar({ open, onClose }) {
                 <HiShieldCheck size={20} className="sidebar__link-icon" />
                 <span className="sidebar__link-text">Admin Panel</span>
               </Link>
+            </div>
+          )}
+
+          {secondApp && (
+            <div className="sidebar__section">
+              <div className="sidebar__section-title">More</div>
+              <a
+                href={secondApp.url}
+                className="sidebar__link"
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${secondApp.name} (opens in a new tab)`}
+              >
+                {iconFailed ? (
+                  <HiExternalLink size={20} className="sidebar__link-icon" aria-hidden="true" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={secondApp.iconUrl}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="sidebar__link-icon"
+                    style={{ borderRadius: 4, objectFit: 'contain' }}
+                    onError={() => setIconFailed(true)}
+                  />
+                )}
+                <span className="sidebar__link-text">{secondApp.name}</span>
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
             </div>
           )}
         </nav>

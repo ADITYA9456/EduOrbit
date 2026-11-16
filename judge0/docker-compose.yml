@@ -1,0 +1,47 @@
+# Self-hosted Judge0 CE for EduOrbite. NOT tested in this repo's CI: Docker was unavailable
+# where it was written. Based on the official Judge0 CE 1.13.1 compose file.
+#
+# Host requirements (Judge0 limitation): Linux with cgroup v1. On Ubuntu 22.04+ add
+#   GRUB_CMDLINE_LINUX="systemd.unified_cgroup_hierarchy=0"  then update-grub and reboot.
+# Docker Desktop on Windows/macOS usually cannot run it. Use a small Linux VPS.
+#
+#   cp judge0.conf.example judge0.conf     # set strong passwords and AUTHN_TOKEN
+#   docker compose up -d db redis && sleep 10 && docker compose up -d
+#   curl -H "X-Auth-Token: <token>" http://localhost:2358/languages   # should list languages
+#
+# Put it behind HTTPS (Caddy, nginx) and never expose port 2358 without AUTHN_TOKEN set.
+# Then set JUDGE0_URL and JUDGE0_API_KEY on Vercel.
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/server"]
+    env_file: judge0.conf
+    ports:
+      - "127.0.0.1:2358:2358"
+    privileged: true
+    restart: always
+    depends_on: [db, redis]
+
+  worker:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    env_file: judge0.conf
+    privileged: true
+    restart: always
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16.2
+    env_file: judge0.conf
+    volumes:
+      - judge0-data:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    image: redis:7.2.4
+    command: ["bash", "-c", 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"']
+    env_file: judge0.conf
+    restart: always
+
+volumes:
+  judge0-data:

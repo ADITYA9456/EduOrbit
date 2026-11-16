@@ -40,3 +40,9 @@ public/sw.js
 public/sw.js.map
 public/swe-worker-*.js
 public/workbox-*.js
+
+# generated question fixtures (python scripts/questions/build.py)
+scripts/questions/generated/
+scripts/questions/__pycache__/
+
+judge0/judge0.conf
