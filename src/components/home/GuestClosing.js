@@ -7,7 +7,7 @@ import './guest-home.css';
 
 const FAQ = [
   {
-    q: 'How do videos get on EduOrbite?',
+    q: 'How do videos get on EduOrbit?',
     a: 'Each video gets an AI check, then admin approval, before it goes live.',
   },
   {

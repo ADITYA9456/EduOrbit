@@ -1,4 +1,17 @@
-
+-- ============================================================================
+-- EduOrbit base schema.  DESTRUCTIVE: this file DROPS every table below first.
+-- Run it ONLY on a brand-new, empty Supabase project, then apply
+-- supabase/migrations/001 .. 004 in order. For an existing project use the
+-- numbered migrations only.
+-- ============================================================================
+DO $$
+DECLARE n BIGINT := 0;
+BEGIN
+  IF to_regclass('public.profiles') IS NOT NULL THEN EXECUTE 'SELECT count(*) FROM public.profiles' INTO n; END IF;
+  IF n > 0 THEN
+    RAISE EXCEPTION 'Refusing to run: public.profiles already has users and this script would delete all data. Use supabase/migrations/* instead.';
+  END IF;
+END $$;
 DO $$ BEGIN DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users; EXCEPTION WHEN undefined_table THEN NULL; END $$;
 DO $$ BEGIN DROP TRIGGER IF EXISTS trg_generate_problem_slug ON coding_problems; EXCEPTION WHEN undefined_table THEN NULL; END $$;
 DO $$ BEGIN DROP TRIGGER IF EXISTS trg_update_user_stats ON user_progress; EXCEPTION WHEN undefined_table THEN NULL; END $$;

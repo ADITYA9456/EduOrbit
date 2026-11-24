@@ -32,7 +32,7 @@ const expectError = async (name, sql, pattern) => {
 const asUser = async (uid, role = 'authenticated') => {
   await db.exec(`RESET ROLE; SELECT set_config('request.jwt.claim.sub', '${uid ?? ''}', false); SET ROLE ${role};`);
 };
-const asAdminDb = () => db.exec('RESET ROLE;');
+const asAdminDb = () => db.exec(RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false););
 
 // ---- Supabase stubs
 await db.exec(`
@@ -47,7 +47,7 @@ await db.exec(`
 `);
 
 try {
-  await db.exec(read('database-schema.sql'));
+  await db.exec(read('supabase/database-schema.sql'));
   check('existing database-schema.sql runs', true);
 } catch (e) {
   check('existing database-schema.sql runs', false, e.message.slice(0, 200));
@@ -57,7 +57,7 @@ await db.exec(`GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, 
   GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;`);
 
 // ---- migrations (twice, to prove idempotency)
-for (const f of ['001_judge_tables.sql', '002_contests_leaderboard.sql', '003_security_hardening.sql']) {
+for (const f of ['001_judge_tables.sql', '002_contests_leaderboard.sql', '003_security_hardening.sql', '004_platform_features.sql']) {
   for (const pass of [1, 2]) {
     try {
       await db.exec(read(`supabase/migrations/${f}`));
@@ -234,6 +234,123 @@ check('global: only accepted submits are ranked (u3 third; u4, u5, banned u6 abs
 const gme = await q(`SELECT * FROM global_my_rank()`);
 check("global: caller's own rank (u2 = 2)", gme.length === 1 && Number(gme[0].rank) === 2);
 check('global: pagination offset past the end returns no rows', (await q(`SELECT * FROM global_leaderboard(25, 100)`)).length === 0);
+
+// ================= migration 004 =================
+await asAdminDb();
+// unique usernames and no phone in public profiles
+await db.exec(`INSERT INTO auth.users (email, phone, raw_user_meta_data) VALUES ('dup@a.test', '+911234567890', '{"username":"samename"}'), ('dup@b.test', NULL, '{"username":"samename"}'), ('x@c.test', NULL, '{"username":"!!"}')`);
+const dupProfiles = await q(`SELECT username, phone FROM profiles WHERE username LIKE 'samename%'`);
+check('004: duplicate usernames get unique suffixes (sign-up no longer fails)', dupProfiles.length === 2 && new Set(dupProfiles.map((p) => p.username)).size === 2);
+check('004: phone number is not copied into public profiles', dupProfiles.every((p) => !p.phone));
+check('004: invalid username falls back to a generated one', (await q(`SELECT username FROM profiles WHERE id = (SELECT id FROM auth.users WHERE email = 'x@c.test')`))[0].username.startsWith('user_'));
+
+// streaks
+await db.exec(`INSERT INTO streaks (user_id, activity_date) VALUES ('${U.u2}', current_date - 2), ('${U.u2}', current_date - 1), ('${U.u2}', current_date - 4)`);
+await asUser(U.u2);
+let st = (await q(`SELECT * FROM my_streak('UTC')`))[0];
+check('004: streak ending yesterday is still alive (2), longest 2', st.current_streak === 2 && st.longest_streak === 2 && st.active_today === false, JSON.stringify(st));
+st = (await q(`SELECT * FROM record_activity('test', 'UTC')`))[0];
+check('004: recording activity today extends it to 3', st.current_streak === 3 && st.active_today === true, JSON.stringify(st));
+check('004: profile streak columns updated by the function', (await q(`SELECT current_streak, longest_streak FROM profiles WHERE id = '${U.u2}'`))[0].current_streak === 3);
+await asUser(U.u1);
+st = (await q(`SELECT * FROM my_streak('UTC')`))[0];
+check('004: a user with no activity has streak 0', st.current_streak === 0);
+await asAdminDb();
+await db.exec(`INSERT INTO streaks (user_id, activity_date) VALUES ('${U.u3}', current_date - 5), ('${U.u3}', current_date - 4)`);
+await asUser(U.u3);
+check('004: a streak that missed yesterday reads 0', (await q(`SELECT current_streak FROM my_streak('UTC')`))[0].current_streak === 0);
+await expectError('004: users cannot edit their own streak columns', `UPDATE profiles SET current_streak = 999 WHERE id = '${U.u3}'`, /protected_profile_column/);
+await expectError('004: users cannot insert streak rows directly', `INSERT INTO streaks (user_id, activity_date) VALUES ('${U.u3}', current_date)`, /row-level security/i);
+await expectError('004: clients cannot call the internal activity function', `SELECT _record_activity('${U.u3}', 'x', 'UTC')`, /permission denied/i);
+await asUser(null, 'anon');
+await expectError('004: anon cannot call record_activity', `SELECT * FROM record_activity('x', 'UTC')`, /permission denied/i);
+
+// study timer
+await asUser(U.u4);
+await db.exec(`SELECT study_start('Graphs')`);
+await expectError('004: only one open study session', `SELECT study_start('again')`, /session_already_open/);
+check('004: study_current reports a running session', (await q(`SELECT status, topic FROM study_current()`))[0].status === 'running');
+await db.exec(`SELECT study_pause()`);
+check('004: pause freezes the session', (await q(`SELECT status FROM study_current()`))[0].status === 'paused');
+await expectError('004: cannot pause twice', `SELECT study_pause()`, /no_running_session/);
+await db.exec(`SELECT study_resume()`);
+check('004: stopping under 60s discards the session', (await q(`SELECT study_stop('UTC') AS s`))[0].s === 0 && (await q(`SELECT count(*)::int n FROM study_sessions`))[0].n === 0);
+await db.exec(`SELECT study_start('Long')`);
+await asAdminDb();
+await db.exec(`UPDATE study_sessions SET last_resumed_at = now() - interval '25 hours' WHERE user_id = '${U.u4}'`);
+await asUser(U.u4);
+const capped = (await q(`SELECT elapsed_seconds FROM study_current()`))[0].elapsed_seconds;
+check('004: a forgotten timer is capped at 12 hours', capped === 43200, String(capped));
+await db.exec(`SELECT study_pause()`);
+await asAdminDb();
+await db.exec(`UPDATE study_sessions SET accumulated_seconds = 1500 WHERE user_id = '${U.u4}'`);
+await asUser(U.u4);
+check('004: stop saves the server-computed seconds', (await q(`SELECT study_stop('UTC') AS s`))[0].s === 1500);
+check('004: finished session counts as streak activity', (await q(`SELECT active_today FROM my_streak('UTC')`))[0].active_today === true);
+await expectError('004: users cannot write study sessions directly', `INSERT INTO study_sessions (user_id, status, accumulated_seconds) VALUES ('${U.u4}', 'completed', 99999)`, /row-level security/i);
+await asUser(U.u5);
+check("004: study sessions are private", (await q(`SELECT count(*)::int n FROM study_sessions`))[0].n === 0);
+
+// goals and planner
+await asUser(U.u5);
+await db.exec(`INSERT INTO study_goals (user_id, daily_minutes, weekly_problems) VALUES ('${U.u5}', 90, 7)`);
+await expectError('004: goal limits enforced', `UPDATE study_goals SET daily_minutes = 5000 WHERE user_id = '${U.u5}'`, /check constraint|violates/i);
+await db.exec(`INSERT INTO study_plan_items (user_id, title, due_date) VALUES ('${U.u5}', 'Revise graphs', current_date)`);
+await expectError('004: plan title cannot be blank', `INSERT INTO study_plan_items (user_id, title, due_date) VALUES ('${U.u5}', '   ', current_date)`, /check constraint|violates/i);
+await asUser(U.u1);
+check("004: plans and goals are private", (await q(`SELECT (SELECT count(*) FROM study_plan_items)::int + (SELECT count(*) FROM study_goals)::int AS n`))[0].n === 0);
+await expectError("004: cannot plan as someone else", `INSERT INTO study_plan_items (user_id, title, due_date) VALUES ('${U.u5}', 'x', current_date)`, /row-level security/i);
+
+// contact + ai usage
+await asUser(U.u1);
+await expectError('004: users cannot insert contact messages directly', `INSERT INTO contact_messages (name, email, subject, message) VALUES ('a', 'a@b.co', 's', 'hello there friend')`, /row-level security/i);
+await expectError('004: users cannot write ai_usage', `INSERT INTO ai_usage (user_id, kind) VALUES ('${U.u1}', 'chat')`, /row-level security/i);
+await asAdminDb();
+await db.exec(`INSERT INTO contact_messages (name, email, subject, message) VALUES ('a', 'a@b.co', 's', 'hello there friend')`);
+await asUser(U.u1);
+check('004: users cannot read contact messages', (await q(`SELECT count(*)::int n FROM contact_messages`))[0].n === 0);
+await asUser(U.admin);
+check('004: admins can read contact messages', (await q(`SELECT count(*)::int n FROM contact_messages`))[0].n === 1);
+
+// contest fairness
+await asAdminDb();
+const [{ id: up }] = await q(`INSERT INTO contests (title, start_time, end_time) VALUES ('Future', now() + interval '1 day', now() + interval '2 days') RETURNING id`);
+await db.exec(`INSERT INTO contest_problems (contest_id, problem_id, order_index, points) VALUES ('${up}', '${g1}', 1, 100)`);
+await asUser(U.u1);
+check('004: problems of an upcoming contest are hidden from users', (await q(`SELECT count(*)::int n FROM contest_problems WHERE contest_id = '${up}'`))[0].n === 0);
+await asUser(null, 'anon');
+check('004: ... and from anon', (await q(`SELECT count(*)::int n FROM contest_problems WHERE contest_id = '${up}'`))[0].n === 0);
+await asUser(U.admin);
+check('004: ... but visible to admins', (await q(`SELECT count(*)::int n FROM contest_problems WHERE contest_id = '${up}'`))[0].n === 1);
+await db.exec(`INSERT INTO contest_problems (contest_id, problem_id, order_index, points) VALUES ('${up}', '${g2}', 2, 100)`);
+check('004: admins can manage contest problems', true);
+await asUser(U.u1);
+check('004: problems of a started contest are visible', (await q(`SELECT count(*)::int n FROM contest_problems WHERE contest_id = '${rc}'`))[0].n === 3);
+
+// editorials
+await asAdminDb();
+const seededEditorials = await q(`SELECT count(*)::int n FROM problem_editorials`);
+const leftover = await q(`SELECT count(*)::int n FROM coding_problems WHERE editorial <> ''`);
+check('004: seeded editorials live in problem_editorials, legacy column is blank', seededEditorials[0].n >= 20 && leftover[0].n === 0, JSON.stringify({ seededEditorials, leftover }));
+await asUser(U.u1);
+check('004: editorial readable outside a live contest', (await q(`SELECT count(*)::int n FROM problem_editorials WHERE problem_id = '${g1}'`))[0].n === 1);
+await asAdminDb();
+await db.exec(`UPDATE contests SET start_time = now() - interval '1 hour', end_time = now() + interval '1 hour' WHERE id = '${up}'`);
+await asUser(U.u1);
+check('004: editorial hidden while a contest using the problem is live', (await q(`SELECT count(*)::int n FROM problem_editorials WHERE problem_id = '${g1}'`))[0].n === 0);
+await asUser(U.admin);
+check('004: ... but admins still read it', (await q(`SELECT count(*)::int n FROM problem_editorials WHERE problem_id = '${g1}'`))[0].n === 1);
+await asAdminDb();
+await db.exec(`UPDATE contests SET end_time = now() - interval '1 minute' WHERE id = '${up}'`);
+await asUser(U.u1);
+check('004: editorial returns after the contest ends', (await q(`SELECT count(*)::int n FROM problem_editorials WHERE problem_id = '${g1}'`))[0].n === 1);
+await expectError('004: users cannot write editorials', `UPDATE problem_editorials SET body = 'x'`, /row-level security|permission/i);
+
+// badges
+await asAdminDb();
+await db.exec(`UPDATE profiles SET badges = '["first_solve","ten_solver"]'::jsonb WHERE id = '${U.u1}'`);
+await db.exec(read('supabase/migrations/004_platform_features.sql'));
+check('004: legacy badge ids are renamed on re-run', JSON.stringify((await q(`SELECT badges FROM profiles WHERE id = '${U.u1}'`))[0].badges.sort()) === '["first_solve","problems_10"]');
 
 console.log(failed === 0 ? '\nAll SQL checks passed.' : `\n${failed} SQL check(s) FAILED.`);
 process.exit(failed === 0 ? 0 : 1);

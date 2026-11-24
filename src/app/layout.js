@@ -1,6 +1,7 @@
 import { AuthProvider } from '@/context/AuthProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
+import { SITE_URL } from '@/lib/site';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
@@ -21,29 +22,28 @@ const jetbrains = JetBrains_Mono({
   variable: '--font-jetbrains',
 });
 
-const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://eduorbit-prep.vercel.app').replace(/\/+$/, '');
 const SITE_DESCRIPTION =
-  'Curated video lessons, a real code judge with 20 graded problems, timed contests and a leaderboard. Learn it, then prove it in code.';
+  'Curated video lessons, a real code judge with graded problems, timed contests and a leaderboard. Learn it, then prove it in code.';
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: 'EduOrbite: Learn from video, prove it in code', template: '%s | EduOrbite' },
+  title: { default: 'EduOrbit: Learn from video, prove it in code', template: '%s | EduOrbit' },
   description: SITE_DESCRIPTION,
-  applicationName: 'EduOrbite',
+  applicationName: 'EduOrbit',
   keywords: ['coding practice', 'online judge', 'programming contests', 'video lessons', 'learn to code'],
   alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   openGraph: {
     type: 'website',
-    siteName: 'EduOrbite',
+    siteName: 'EduOrbit',
     url: '/',
-    title: 'EduOrbite: Learn from video, prove it in code',
+    title: 'EduOrbit: Learn from video, prove it in code',
     description: SITE_DESCRIPTION,
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'EduOrbite: learn from video, prove it in code' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'EduOrbit: learn from video, prove it in code' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EduOrbite: Learn from video, prove it in code',
+    title: 'EduOrbit: Learn from video, prove it in code',
     description: SITE_DESCRIPTION,
     images: ['/og.png'],
   },
@@ -51,7 +51,7 @@ export const metadata = {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: '64x64' }],
     apple: '/icons/apple-touch-icon.png',
   },
-  appleWebApp: { capable: true, title: 'EduOrbite', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'EduOrbit', statusBarStyle: 'black-translucent' },
 };
 export const viewport = {
   themeColor: '#07090f',

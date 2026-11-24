@@ -3,64 +3,40 @@
 import { createClient } from '@/lib/supabase/client';
 import { useCallback, useEffect, useState } from 'react';
 
+const timeZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+};
+
+const toState = (row) => ({ current: row?.current_streak ?? 0, longest: row?.longest_streak ?? 0, activeToday: !!row?.active_today });
+
 /**
- * Hook for tracking daily streaks.
- * Reads from profiles and writes to streaks table.
+ * Daily streak. The database owns the calculation: the browser only asks for it
+ * (my_streak) or reports activity (record_activity). A streak that missed yesterday reads 0.
  */
 export function useStreak(userId) {
   const supabase = createClient();
-  const [streak, setStreak] = useState({ current: 0, longest: 0 });
+  const [streak, setStreak] = useState({ current: 0, longest: 0, activeToday: false });
 
   useEffect(() => {
     if (!userId) return;
     supabase
-      .from('profiles')
-      .select('current_streak, longest_streak')
-      .eq('id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setStreak({ current: data.current_streak ?? 0, longest: data.longest_streak ?? 0 });
-      })
-      .catch((err) => console.error('Failed to load streak:', err));
+      .rpc('my_streak', { p_tz: timeZone() })
+      .then(({ data, error }) => {
+        if (error) console.error('Failed to load streak:', error.message);
+        else if (data?.[0]) setStreak(toState(data[0]));
+      });
   }, [userId, supabase]);
 
-  const recordActivity = useCallback(async () => {
+  const recordActivity = useCallback(async (type = 'activity') => {
     if (!userId) return;
-    const today = new Date().toISOString().split('T')[0];
-
-    // Upsert today's activity
-    await supabase
-      .from('streaks')
-      .upsert({ user_id: userId, activity_date: today, activity_type: 'solve' }, { onConflict: 'user_id,activity_date' });
-
-    // Recalculate streak
-    const { data: activities } = await supabase
-      .from('streaks')
-      .select('activity_date')
-      .eq('user_id', userId)
-      .order('activity_date', { ascending: false })
-      .limit(365);
-
-    if (!activities || activities.length === 0) return;
-
-    let currentStreak = 1;
-    for (let i = 1; i < activities.length; i++) {
-      const prev = new Date(activities[i - 1].activity_date);
-      const curr = new Date(activities[i].activity_date);
-      const diff = (prev - curr) / (1000 * 60 * 60 * 24);
-      if (diff === 1) currentStreak++;
-      else break;
-    }
-
-    const longestStreak = Math.max(currentStreak, streak.longest);
-
-    await supabase
-      .from('profiles')
-      .update({ current_streak: currentStreak, longest_streak: longestStreak, last_active_date: new Date().toISOString() })
-      .eq('id', userId);
-
-    setStreak({ current: currentStreak, longest: longestStreak });
-  }, [userId, supabase, streak.longest]);
+    const { data, error } = await supabase.rpc('record_activity', { p_type: type, p_tz: timeZone() });
+    if (error) console.error('Failed to record activity:', error.message);
+    else if (data?.[0]) setStreak(toState(data[0]));
+  }, [userId, supabase]);
 
   return { ...streak, recordActivity };
 }

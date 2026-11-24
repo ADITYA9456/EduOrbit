@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Offline | EduOrbite',
+  title: 'Offline | EduOrbit',
   robots: { index: false },
 };
 

@@ -2,15 +2,26 @@
 
 import { useAuth } from '@/context/AuthProvider';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 import AuthField from '@/components/auth/AuthField';
 import GlassPanel from '@/components/ui/GlassPanel';
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { HiLockClosed, HiMail, HiPhone } from 'react-icons/hi';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const { signIn, signInWithGoogle, sendPhoneOtp, verifyPhoneOtp } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeRedirectPath(searchParams.get('redirect'), '/home');
 
   const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
   const [email, setEmail] = useState('');
@@ -57,7 +68,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      router.push('/home');
+      router.push(next);
     } catch (err) {
       failForm(err.message || 'Invalid email or password', ['email', 'password']);
     } finally {
@@ -94,7 +105,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await verifyPhoneOtp(phone, otp);
-      router.push('/home');
+      router.push(next);
     } catch (err) {
       failForm(err.message || 'Invalid OTP', ['otp']);
     } finally {
@@ -105,7 +116,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     clearErrors();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(next);
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
     }
@@ -176,6 +187,9 @@ export default function LoginPage() {
               value={password} onChange={(e) => setPassword(e.target.value)}
               required error={fieldErrors.password} invalid={flagged.includes('password')} formErrorId="auth-error"
             />
+            <div style={{ textAlign: 'right', marginTop: '-0.25rem' }}>
+              <Link href="/forgot-password" className="link-btn">Forgot password?</Link>
+            </div>
             <button type="submit" className="btn btn--primary btn--lg" disabled={loading} style={{ width: '100%' }}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>

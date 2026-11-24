@@ -90,7 +90,7 @@ Other shared components (used by pages):
 ### 6. Design tokens (current)
 Files: `src/app/globals.css` (base, `:root` and `[data-theme="light"]`) and `src/app/premium.css` (loaded after it).
 
-**Live palette:** dark navy with blue-violet accents ("EduOrbite" dark). The default is dark (`<html data-theme="dark">`). A light theme is applied via `data-theme="light"` and saved in localStorage as `eduorbite-theme`.
+**Live palette:** dark navy with blue-violet accents ("EduOrbit" dark). The default is dark (`<html data-theme="dark">`). A light theme is applied via `data-theme="light"` and saved in localStorage as `eduorbite-theme`.
 **Live fonts:** Inter (`--font-inter`) for UI and JetBrains Mono (`--font-jetbrains`) for code, both loaded through `next/font/google`.
 
 | Token | Dark (`:root`) | Light override |

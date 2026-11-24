@@ -1,0 +1,58 @@
+.dash { display: flex; flex-direction: column; gap: var(--space-lg, 24px); }
+.dash__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.dash__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.dash__grid--wide { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.dash .card { padding: 20px; }
+.dash-card__title { font-size: 1.05rem; margin: 0 0 12px; }
+
+.dash-timer { display: flex; flex-direction: column; gap: 12px; }
+.dash-timer__clock { font-family: var(--font-jetbrains, monospace); font-size: 2.6rem; font-weight: 700; letter-spacing: 0.02em; }
+.dash-timer__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.dash-bars { display: flex; gap: 8px; align-items: flex-end; height: 170px; }
+.dash-bars__col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.dash-bars__track { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--bg-tertiary, rgba(127, 127, 127, 0.1)); border-radius: 6px; overflow: hidden; }
+.dash-bars__bar { width: 100%; background: var(--accent-primary); border-radius: 6px 6px 0 0; transition: height 0.3s ease; }
+.dash-bars__bar--goal { background: var(--success); }
+.dash-bars__val { font-size: 0.72rem; color: var(--text-muted); }
+.dash-bars__label { font-size: 0.75rem; color: var(--text-muted); }
+.dash-bars__label--today { color: var(--text-primary); font-weight: 700; }
+
+.dash-report { display: grid; gap: 10px; margin: 0; }
+.dash-report > div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.dash-report dt { color: var(--text-muted); font-size: 0.9rem; }
+.dash-report dd { margin: 0; font-weight: 600; text-align: right; }
+.dash-report small { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.75rem; }
+
+.dash-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.dash-list__item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color, rgba(127, 127, 127, 0.2)); }
+.dash-list__item:last-child { border-bottom: 0; padding-bottom: 0; }
+.dash-list__item p { margin: 4px 0 0; }
+
+.dash-topic { margin: 0 0 8px; padding-left: 10px; border-left: 3px solid var(--border-color); }
+.dash-topic--weak { border-color: var(--warning); }
+.dash-topic--strong { border-color: var(--success); }
+.dash-cats { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.dash-cats li { display: grid; grid-template-columns: 1fr 90px auto; gap: 10px; align-items: center; font-size: 0.9rem; }
+.dash-cats__meter { height: 6px; border-radius: 3px; background: var(--bg-tertiary, rgba(127, 127, 127, 0.15)); overflow: hidden; display: block; }
+.dash-cats__meter > span { display: block; height: 100%; background: var(--success); }
+
+.dash-plan__form { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+.dash-plan__item { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.dash-plan__item--done span { text-decoration: line-through; opacity: 0.6; }
+.dash-plan__item small { color: var(--text-muted); }
+.dash-overdue { color: var(--danger) !important; }
+
+.dash-chat { display: flex; flex-direction: column; gap: 10px; }
+.dash-chat__log { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; min-height: 120px; }
+.dash-chat__suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dash-chat__msg { padding: 8px 12px; border-radius: 12px; max-width: 92%; white-space: pre-wrap; line-height: 1.5; font-size: 0.92rem; }
+.dash-chat__msg--user { align-self: flex-end; background: var(--accent-primary); color: #fff; }
+.dash-chat__msg--model { align-self: flex-start; background: var(--bg-tertiary, rgba(127, 127, 127, 0.15)); }
+.dash-chat__form { display: flex; gap: 8px; }
+.dash-chat__form .input { flex: 1; }
+
+@media (max-width: 520px) {
+  .dash-plan__form { grid-template-columns: 1fr; }
+  .dash-timer__clock { font-size: 2.1rem; }
+}

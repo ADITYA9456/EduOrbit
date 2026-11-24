@@ -1,5 +1,8 @@
 'use client';
 
+import AdminContests from '@/components/admin/AdminContests';
+import AdminMessages from '@/components/admin/AdminMessages';
+import AdminProblems from '@/components/admin/AdminProblems';
 import Dialog from '@/components/ui/Dialog';
 import EmptyState from '@/components/ui/EmptyState';
 import Table from '@/components/ui/Table';
@@ -15,6 +18,7 @@ import {
     HiCode,
     HiExclamation,
     HiEye,
+    HiMail,
     HiRefresh,
     HiShieldCheck,
     HiTrendingUp,
@@ -22,6 +26,7 @@ import {
     HiVideoCamera,
     HiXCircle
 } from 'react-icons/hi';
+import { HiTrophy } from 'react-icons/hi2';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: HiTrendingUp },
@@ -29,6 +34,9 @@ const TABS = [
   { key: 'reports', label: 'Reports', icon: HiExclamation },
   { key: 'users', label: 'Users', icon: HiUsers },
   { key: 'ai-logs', label: 'AI Logs', icon: HiShieldCheck },
+  { key: 'problems', label: 'Problems', icon: HiCode },
+  { key: 'contests', label: 'Contests', icon: HiTrophy },
+  { key: 'messages', label: 'Messages', icon: HiMail },
 ];
 
 export default function AdminPage() {
@@ -180,7 +188,13 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {loading ? (
+      {tab === 'problems' ? (
+        <AdminProblems ask={ask} />
+      ) : tab === 'contests' ? (
+        <AdminContests ask={ask} />
+      ) : tab === 'messages' ? (
+        <AdminMessages />
+      ) : loading ? (
         <div className="route-loading" aria-busy="true">
           <div className="skeleton route-loading__card" />
           <div className="skeleton route-loading__card" />

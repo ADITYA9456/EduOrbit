@@ -1,8 +1,8 @@
-const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://eduorbit-prep.vercel.app').replace(/\/+$/, '');
+import { SITE_URL } from '@/lib/site';
 
 export default function robots() {
   return {
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/', '/admin', '/profile', '/upload', '/offline'] }],
+    rules: [{ userAgent: '*', allow: '/', disallow: ['/api/', '/admin', '/profile', '/dashboard', '/reset-password', '/upload', '/offline'] }],
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

@@ -61,12 +61,12 @@ export default function AISummaryPanel({ video, compact = false }) {
 
   if (!video) {
     return (
-      <GlassPanel as="aside" padded={false} className="ai-panel ai-panel--empty" aria-label="AI video summary">
+      <GlassPanel as="aside" padded={false} className="ai-panel ai-panel--empty" aria-label="Video summary">
         <div className="ai-panel__empty-icon">
           <HiSparkles size={48} aria-hidden="true" />
         </div>
-        <h3>AI Video Summary</h3>
-        <p>Select a video from the list to see its AI-powered summary and key insights.</p>
+        <h3>Video Summary</h3>
+        <p>Select a video from the list to see a summary built from its description, topics and chapters.</p>
       </GlassPanel>
     );
   }
@@ -79,7 +79,7 @@ export default function AISummaryPanel({ video, compact = false }) {
       as="aside"
       padded={false}
       className={`ai-panel animate-fade-in${compact ? ' ai-panel--compact' : ''}`}
-      aria-label="AI video summary"
+      aria-label="Video summary"
     >
       {!compact && (
         <Link href={`/video/${videoId}`} className="ai-panel__preview" aria-label={`Watch ${video.title}`}>
@@ -113,7 +113,7 @@ export default function AISummaryPanel({ video, compact = false }) {
       <div className="ai-panel__section">
         <div className="ai-panel__section-header">
           <HiSparkles size={16} aria-hidden="true" />
-          <span>AI Summary</span>
+          <span>Summary</span>
         </div>
         <div className="ai-panel__summary">
           {summary?.summaryLines?.length > 0 ? (

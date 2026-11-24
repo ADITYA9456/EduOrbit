@@ -1,13 +1,34 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/memory-cache';
 
 // AI Video Verification — called from upload page
 export async function POST(request) {
   try {
-    const { youtubeUrl, videoId } = await request.json();
+    const { supabase } = createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Sign in to verify videos' }, { status: 401 });
+    }
 
-    if (!videoId) {
-      return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
+    const limit = rateLimit(`verify:${user.id}`, 10, 60_000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many requests. Try again shortly.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+      );
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const videoId = typeof body?.videoId === 'string' ? body.videoId : '';
+
+    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      return NextResponse.json({ error: 'A valid YouTube video ID is required' }, { status: 400 });
     }
 
     // Fetch YouTube metadata via oEmbed (no API key needed)
@@ -88,7 +109,8 @@ export async function POST(request) {
       tags,
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('videos/verify failed:', err);
+    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 500 });
   }
 }
 
@@ -144,7 +166,7 @@ async function geminiVerify(title, description, tags) {
   const apiKey = process.env.GEMINI_API_KEY;
   const tagStr = (tags || []).join(', ');
 
-  const prompt = `You are a content moderator for an educational platform called EduOrbite. Analyze this YouTube video and determine if it is educational content suitable for a learning platform.
+  const prompt = `You are a content moderator for an educational platform called EduOrbit. Analyze this YouTube video and determine if it is educational content suitable for a learning platform.
 
 Video Title: ${title}
 Description: ${description || 'No description available'}
@@ -162,10 +184,10 @@ Rules:
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-2.0-flash'}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {

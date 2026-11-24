@@ -1,4 +1,4 @@
-# EduOrbite — AI-Powered Education + Coding Platform
+# EduOrbit — AI-Powered Education + Coding Platform
 
 A production-ready **Next.js 14** (App Router) application powered by **Supabase** for auth, database, and edge functions. Features an AI-powered video verification system, coding practice platform, competitive contests, and gamification.
 
