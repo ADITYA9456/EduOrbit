@@ -4,8 +4,9 @@ import { useAuth } from '@/context/AuthProvider';
 import { getSecondApp } from '@/lib/external-apps';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
+  HiAcademicCap,
   HiChartBar,
   HiCode,
   HiExternalLink,
@@ -14,6 +15,7 @@ import {
   HiShieldCheck,
   HiUpload,
   HiUser,
+  HiViewGrid,
   HiX
 } from 'react-icons/hi';
 import { HiTrophy } from 'react-icons/hi2';
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
     { href: '/leaderboard', label: 'Leaderboard', icon: HiChartBar },
   ]},
   { section: 'You', links: [
+    { href: '/dashboard', label: 'Dashboard', icon: HiViewGrid, auth: true },
     { href: '/profile', label: 'Profile', icon: HiUser, auth: true },
     { href: '/upload', label: 'Upload Video', icon: HiUpload, auth: true },
   ]},
@@ -37,7 +40,6 @@ export default function Sidebar({ open, onClose }) {
   const { user, isAdmin } = useAuth();
   const asideRef = useRef(null);
   const secondApp = getSecondApp();
-  const [iconFailed, setIconFailed] = useState(false);
 
   // Move focus into the sidebar when it opens so keyboard users land on its links
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function Sidebar({ open, onClose }) {
                 <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
                 <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" />
               </svg>
-            </span> EduOrbite
+            </span> EduOrbit
           </div>
           <button className="sidebar__close-btn" onClick={onClose} aria-label="Close sidebar">
             <HiX size={20} />
@@ -123,31 +125,19 @@ export default function Sidebar({ open, onClose }) {
                 className="sidebar__link"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={handleLinkClick}
                 title={`${secondApp.name} (opens in a new tab)`}
               >
-                {iconFailed ? (
-                  <HiExternalLink size={20} className="sidebar__link-icon" aria-hidden="true" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={secondApp.iconUrl}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="sidebar__link-icon"
-                    style={{ borderRadius: 4, objectFit: 'contain' }}
-                    onError={() => setIconFailed(true)}
-                  />
-                )}
+                <HiAcademicCap size={20} className="sidebar__link-icon" aria-hidden="true" />
                 <span className="sidebar__link-text">{secondApp.name}</span>
+                <HiExternalLink size={14} aria-hidden="true" style={{ marginLeft: 'auto', opacity: 0.6 }} />
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
             </div>
-          )}
-        </nav>
+          )}        </nav>
 
         <div className="sidebar__footer">
-          <p className="sidebar__footer-text">© {new Date().getFullYear()} EduOrbite</p>
+          <p className="sidebar__footer-text">© {new Date().getFullYear()} EduOrbit</p>
           <p className="sidebar__footer-text">AI-Powered Learning</p>
         </div>
       </aside>

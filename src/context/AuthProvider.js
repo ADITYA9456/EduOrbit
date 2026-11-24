@@ -68,7 +68,25 @@ export function AuthProvider({ children }) {
       options: { data: metadata },
     });
     if (error) throw error;
+    // Supabase returns a user with no identities (instead of an error) when the email is already registered.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Try signing in instead.');
+    }
     return data;
+  };
+
+  // Send a password reset email
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+    });
+    if (error) throw error;
+  };
+
+  // Set a new password for the signed-in (recovery) session
+  const updatePassword = async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
   };
 
   // Sign in with email + password
@@ -80,11 +98,11 @@ export function AuthProvider({ children }) {
   };
 
   // Sign in with Google OAuth
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (next = '/home') => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     if (error) throw error;
@@ -150,6 +168,8 @@ export function AuthProvider({ children }) {
         isAdmin,
         signUp,
         signIn,
+        resetPassword,
+        updatePassword,
         signInWithGoogle,
         sendPhoneOtp,
         verifyPhoneOtp,

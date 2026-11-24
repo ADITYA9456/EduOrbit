@@ -1,6 +1,7 @@
 import { createAdminSupabase } from '@/lib/supabase/server';
 import { durationToSeconds } from '@/lib/utils';
 import { NextResponse } from 'next/server';
+import { cacheGet, cacheSet, clientIp, rateLimit } from '@/lib/memory-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -204,8 +205,8 @@ function filterOutShortVideos(videos) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q') || '';
-    const category = searchParams.get('category') || 'All';
+    const query = (searchParams.get('q') || '').slice(0, 120);
+    const category = (searchParams.get('category') || 'All').slice(0, 40);
     const shortsOnly = searchParams.get('shorts') === '1';
     let pageToken = searchParams.get('pageToken') || '';
     let page = parseInt(searchParams.get('page') || '0', 10);
@@ -239,6 +240,19 @@ export async function GET(request) {
       : SEARCH_ORDERS[Math.floor(Math.random() * SEARCH_ORDERS.length)];
 
     // Try YouTube API first (if we have a working key)
+    const limit = rateLimit(`yt-search:${clientIp(request)}`, 40, 60_000);
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
+    // Quota is expensive (a search costs 100 units): cache for 15 minutes.
+    // Default browsing uses a random query, so cache by the resolved query to still dedupe repeats.
+    const cacheKey = `yt-search:${searchQuery}|${category}|${pageToken}|${shortsOnly}|${searchOrder}`;
+    const cachedResult = cacheGet(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json({ ...cachedResult, videos: !isUserSearch ? shuffleArray(cachedResult.videos) : cachedResult.videos });
+    }
+
     const apiKey = getWorkingApiKey();
     if (apiKey) {
       const ytResult = await fetchFromYouTube(apiKey, searchQuery, category, pageToken, maxResults, searchOrder);
@@ -247,6 +261,7 @@ export async function GET(request) {
         filtered = shortsOnly ? filterShortVideos(filtered) : filterOutShortVideos(filtered);
         if (filtered.length > 0) {
           ytResult.videos = !isUserSearch ? shuffleArray(filtered) : filtered;
+          cacheSet(cacheKey, ytResult, 15 * 60_000);
           return NextResponse.json(ytResult);
         }
       }
@@ -574,9 +589,11 @@ async function fallbackToDatabase(searchQuery, category, page = 0) {
       dbQuery = dbQuery.eq('category', category);
     }
 
-    if (searchQuery) {
+    // Strip characters that have meaning inside a PostgREST filter expression.
+    const safeQuery = (searchQuery || '').replace(/[,()%*\\"']/g, ' ').trim().slice(0, 80);
+    if (safeQuery) {
       dbQuery = dbQuery.or(
-        `title.ilike.%${searchQuery}%,channel_title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
+        `title.ilike.%${safeQuery}%,channel_title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`
       );
     }
 

@@ -19,9 +19,9 @@ export default function GuestHero() {
               <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-25 12 12)" />
             </svg>
           </span>
-          EduOrbite
+          EduOrbit
         </Link>
-        <nav className="ghero__nav" aria-label="Explore EduOrbite">
+        <nav className="ghero__nav" aria-label="Explore EduOrbit">
           {NAV.map((l) => (
             <Link key={l.href} href={l.href}>{l.label}</Link>
           ))}

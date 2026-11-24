@@ -2,6 +2,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { LANGUAGES, LIMITS, getJudgeConfig } from './config';
 import { JudgeError } from './judge0';
+import { rateLimit } from '@/lib/memory-cache';
 import { judgeTests, runCustom } from './run';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,7 +66,7 @@ async function awardFirstSolve(admin, userId, problem) {
   const points = problem.points || 10;
   const solved = (profile.problems_solved || 0) + 1;
   const badges = new Set(profile.badges || []);
-  [[1, 'first_solve'], [10, 'ten_solver'], [50, 'fifty_solver'], [100, 'hundred_solver']].forEach(([n, id]) => {
+  [[1, 'first_solve'], [10, 'problems_10'], [50, 'problems_50'], [100, 'problems_100']].forEach(([n, id]) => {
     if (solved >= n) badges.add(id);
   });
 
@@ -97,6 +98,10 @@ export async function handleJudgeRequest(request, kind) {
     }
     const invalid = validate(body, kind);
     if (invalid) return fail(400, 'invalid_request', invalid);
+
+    const { data: account } = await admin.from('profiles').select('banned').eq('id', user.id).maybeSingle();
+    if (account?.banned) return fail(403, 'banned', 'This account has been suspended.');
+    const { data: tzRow } = await admin.from('profiles').select('timezone').eq('id', user.id).maybeSingle();
 
     if (!getJudgeConfig().configured) {
       return fail(503, 'judge_not_configured', 'The code judge is not configured on this deployment.');
@@ -136,6 +141,9 @@ export async function handleJudgeRequest(request, kind) {
     try {
       // Console run with custom stdin: output only, nothing stored or scored.
       if (kind === 'run' && typeof body.customInput === 'string') {
+        // Custom runs are not stored, so the database limit above cannot see them.
+        const custom = rateLimit(`judge-custom:${user.id}`, LIMITS.requestsPerMinute, 60_000);
+        if (!custom.ok) return fail(429, 'rate_limited', 'Too many runs. Wait a moment and try again.', { retryAfter: custom.retryAfter });
         const out = await runCustom({ problem, language: body.language, code: body.code, stdin: body.customInput });
         return NextResponse.json({ mode: 'custom', ...out });
       }
@@ -152,6 +160,16 @@ export async function handleJudgeRequest(request, kind) {
       if (!tests || tests.length === 0) return fail(409, 'problem_not_judged', 'This problem does not have judge tests yet');
 
       const outcome = await judgeTests({ problem, language: body.language, code: body.code, tests });
+
+      if (kind === 'submit') {
+        // Any submission counts as activity for the streak. Missing before migration 004: ignore the error.
+        const { error: streakError } = await admin.rpc('_record_activity', {
+          p_user: user.id,
+          p_type: 'solve',
+          p_tz: tzRow?.timezone || 'UTC',
+        });
+        if (streakError && !/_record_activity/.test(streakError.message)) console.error('record activity failed:', streakError.message);
+      }
 
       let pointsEarned = 0;
       if (kind === 'submit' && outcome.verdict === 'accepted') {

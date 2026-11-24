@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase/server';
+﻿import { createServerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 // GET /api/progress — get user's progress stats
@@ -45,11 +45,13 @@ export async function GET(request) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('GET /api/progress failed:', err);
+    return NextResponse.json({ error: 'Could not load progress' }, { status: 500 });
   }
 }
 
-// POST /api/progress — update user progress on a question
+// POST /api/progress: record an answer to a multiple-choice problem.
+// Correctness and score are decided here from the stored answer; nothing is trusted from the client.
 export async function POST(request) {
   try {
     const { supabase } = createServerSupabase();
@@ -59,66 +61,67 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { questionId, status, languageUsed, score, submittedCode } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const questionId = typeof body?.questionId === 'string' ? body.questionId : '';
+    const answer = typeof body?.submittedCode === 'string' ? body.submittedCode.slice(0, 500) : '';
 
-    if (!questionId) {
-      return NextResponse.json({ error: 'questionId is required' }, { status: 400 });
+    if (!/^[0-9a-f-]{36}$/i.test(questionId)) {
+      return NextResponse.json({ error: 'A valid questionId is required' }, { status: 400 });
+    }
+    if (!answer) {
+      return NextResponse.json({ error: 'An answer is required' }, { status: 400 });
     }
 
-    // Check existing progress
+    const { data: problem } = await supabase
+      .from('coding_problems')
+      .select('id, type, correct_answer, points')
+      .eq('id', questionId)
+      .maybeSingle();
+
+    if (!problem) {
+      return NextResponse.json({ error: 'Problem not found' }, { status: 404 });
+    }
+    if (problem.type !== 'mcq') {
+      return NextResponse.json({ error: 'Code problems are graded through the judge' }, { status: 400 });
+    }
+
+    const correct = answer === problem.correct_answer;
+    const awarded = correct ? problem.points || 0 : 0;
+
     const { data: existing } = await supabase
       .from('user_progress')
-      .select('*')
+      .select('id, status, score, attempts')
       .eq('user_id', user.id)
       .eq('question_id', questionId)
-      .single();
+      .maybeSingle();
 
-    if (existing) {
-      // Update: only upgrade status (attempted → solved), update score if higher
-      const newStatus = status === 'solved' ? 'solved' : existing.status;
-      const newScore = Math.max(existing.score || 0, score || 0);
+    const row = {
+      status: correct || existing?.status === 'solved' ? 'solved' : 'attempted',
+      score: Math.max(existing?.score || 0, awarded),
+      language_used: 'mcq',
+      submitted_code: answer,
+      attempts: (existing?.attempts || 0) + 1,
+      updated_at: new Date().toISOString(),
+    };
 
-      const { data: updated, error } = await supabase
-        .from('user_progress')
-        .update({
-          status: newStatus,
-          score: newScore,
-          language_used: languageUsed || existing.language_used,
-          submitted_code: submittedCode || existing.submitted_code,
-          attempts: (existing.attempts || 0) + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
-        .select()
-        .single();
+    const query = existing
+      ? supabase.from('user_progress').update(row).eq('id', existing.id)
+      : supabase.from('user_progress').insert({ ...row, user_id: user.id, question_id: questionId });
+    const { data: saved, error } = await query.select().single();
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ progress: updated });
-    } else {
-      // Insert new progress
-      const { data: created, error } = await supabase
-        .from('user_progress')
-        .insert({
-          user_id: user.id,
-          question_id: questionId,
-          status: status || 'attempted',
-          language_used: languageUsed || 'javascript',
-          score: score || 0,
-          submitted_code: submittedCode || '',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ progress: created });
+    if (error) {
+      console.error('POST /api/progress failed:', error);
+      return NextResponse.json({ error: 'Could not save your progress' }, { status: 500 });
     }
+
+    return NextResponse.json({ progress: saved, correct, awarded });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('POST /api/progress failed:', err);
+    return NextResponse.json({ error: 'Could not save your progress' }, { status: 500 });
   }
 }

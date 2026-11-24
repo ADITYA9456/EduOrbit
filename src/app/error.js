@@ -1,8 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 
-export default function Error({ reset }) {
+export default function Error({ error, reset }) {
+  useEffect(() => {
+    // The digest links this browser error to the matching server log line.
+    console.error('Unhandled UI error', { digest: error?.digest, message: error?.message });
+  }, [error]);
+
   return (
     <main className="status-page" role="alert">
       <p className="status-page__code" aria-hidden="true">Oops</p>

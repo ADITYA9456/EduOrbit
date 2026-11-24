@@ -1,7 +1,7 @@
 export default function manifest() {
   return {
-    name: 'EduOrbite: Learn and Code',
-    short_name: 'EduOrbite',
+    name: 'EduOrbit: Learn and Code',
+    short_name: 'EduOrbit',
     description: 'Curated video lessons, coding practice, contests and streaks in one place.',
     id: '/',
     start_url: '/home',

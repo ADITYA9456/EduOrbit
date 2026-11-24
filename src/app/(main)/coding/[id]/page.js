@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import DifficultyBadge from '@/components/coding/DifficultyBadge';
 import EditorFrame from '@/components/coding/EditorFrame';
@@ -50,16 +50,6 @@ const LANG_MONACO = { javascript: 'javascript', python: 'python', java: 'java', 
 const PROBLEM_COLUMNS =
   'id,title,slug,description,difficulty,category,type,tags,starter_code,examples,constraints,mcq_options,correct_answer,points,input_format,output_format,editorial,judged,time_limit_ms,memory_limit_kb';
 
-const AI_HINTS = [
-  'Think about the data structure that gives you O(1) lookup time.',
-  'Consider using a hash map to store previously seen values.',
-  'Try breaking the problem into smaller subproblems.',
-  'Consider edge cases: empty input, single element, duplicates.',
-  'Think about whether a two-pointer approach could work here.',
-  'Consider using recursion with memoization.',
-  'Draw it out on paper first — visualize the algorithm step by step.',
-  'Ask yourself: what is the brute force approach? Can you optimize it?',
-];
 
 export default function ProblemPage() {
   const { id } = useParams();
@@ -84,6 +74,8 @@ export default function ProblemPage() {
   const [bookmarked, setBookmarked] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [hint, setHint] = useState('');
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState('');
   const [mcqAnswer, setMcqAnswer] = useState('');
   const [mcqResult, setMcqResult] = useState(null);
   const [samples, setSamples] = useState([]);
@@ -115,6 +107,11 @@ export default function ProblemPage() {
       if (cancelled) return;
       if (data) {
         const { test_cases: _legacyTests, ...safe } = data;
+        // Editorials live in their own table so they can be withheld during a live contest.
+        // Before migration 004 the table does not exist and the legacy column is used instead.
+        const { data: ed } = await supabase.from('problem_editorials').select('body').eq('problem_id', data.id).maybeSingle();
+        if (cancelled) return;
+        if (ed?.body) safe.editorial = ed.body;
         setProblem(safe);
       }
       setLoading(false);
@@ -352,9 +349,6 @@ export default function ProblemPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           questionId: problem.id,
-          status: isCorrect ? 'solved' : 'attempted',
-          languageUsed: 'mcq',
-          score,
           submittedCode: mcqAnswer,
         }),
       });
@@ -387,9 +381,27 @@ export default function ProblemPage() {
     }
   };
 
-  const showAIHint = () => {
-    setHint(AI_HINTS[Math.floor(Math.random() * AI_HINTS.length)]);
+  const showAIHint = async () => {
+    if (!user) return toast.error('Sign in to get a hint');
+    if (hintLoading) return;
+    setHintLoading(true);
     setShowHint(true);
+    setHint('');
+    setHintError('');
+    try {
+      const res = await fetch('/api/ai/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problemId: problem.id, code, language }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not get a hint');
+      setHint(data.hint);
+    } catch (err) {
+      setHintError(err.message);
+    } finally {
+      setHintLoading(false);
+    }
   };
 
   if (loading) return <div className="loading-container"><div className="spinner" /></div>;
@@ -566,12 +578,12 @@ export default function ProblemPage() {
             )}
 
             <div style={{ marginBottom: 'var(--space-lg)' }}>
-              <button className="btn btn--secondary btn--sm" onClick={showAIHint}>
-                <HiLightBulb size={16} /> Hint
+              <button className="btn btn--secondary btn--sm" onClick={showAIHint} disabled={hintLoading}>
+                <HiLightBulb size={16} /> {hintLoading ? 'Thinking...' : 'Hint'}
               </button>
               {showHint && (
                 <div className="card hint-card" role="status">
-                  <p className="text-sm">{hint}</p>
+                  <p className="text-sm">{hintLoading ? 'Thinking of a hint...' : hintError || hint}</p>
                 </div>
               )}
             </div>

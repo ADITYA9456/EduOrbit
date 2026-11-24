@@ -2,15 +2,16 @@ import Link from 'next/link';
 
 const GROUPS = [
   { title: 'Learn', links: [{ href: '/home', label: 'Home' }, { href: '/shorts', label: 'Shorts' }, { href: '/upload', label: 'Upload' }] },
-  { title: 'Practice', links: [{ href: '/coding', label: 'Coding' }, { href: '/practice', label: 'Practice' }, { href: '/contests', label: 'Contests' }, { href: '/leaderboard', label: 'Leaderboard' }] },
+  { title: 'Practice', links: [{ href: '/coding', label: 'Coding' }, { href: '/contests', label: 'Contests' }, { href: '/leaderboard', label: 'Leaderboard' }] },
   { title: 'Account', links: [{ href: '/profile', label: 'Profile' }, { href: '/login', label: 'Login' }, { href: '/signup', label: 'Sign up' }] },
+  { title: 'Legal', links: [{ href: '/terms', label: 'Terms' }, { href: '/privacy', label: 'Privacy' }, { href: '/contact', label: 'Contact' }] },
 ];
 
 export default function Footer() {
   return (
     <footer className="site-footer">
       <div className="site-footer__brand">
-        <span className="site-footer__name">EduOrbite</span>
+        <span className="site-footer__name">EduOrbit</span>
         <span className="site-footer__tag">Learning videos and coding practice.</span>
       </div>
       <nav className="site-footer__nav" aria-label="Footer">
@@ -25,7 +26,7 @@ export default function Footer() {
           </div>
         ))}
       </nav>
-      <p className="site-footer__copy">© {new Date().getFullYear()} EduOrbite</p>
+      <p className="site-footer__copy">© {new Date().getFullYear()} EduOrbit</p>
     </footer>
   );
 }

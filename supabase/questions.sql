@@ -1,4 +1,4 @@
--- EduOrbite: Questions cache table (external sources)
+-- EduOrbit: Questions cache table (external sources)
 -- Safe to run on an existing database (no drops).
 
 -- 1) Table

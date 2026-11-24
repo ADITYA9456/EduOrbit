@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cacheGet, cacheSet, clientIp, rateLimit } from '@/lib/memory-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +15,16 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id') || '';
 
-    if (!id) {
-      return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
+    if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
+      return NextResponse.json({ error: 'A valid video ID is required' }, { status: 400 });
+    }
+
+    const cached = cacheGet(`yt-video:${id}`);
+    if (cached) return NextResponse.json(cached);
+
+    const limit = rateLimit(`yt-video:${clientIp(request)}`, 60, 60_000);
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
     }
 
     // Fetch video details
@@ -63,11 +72,12 @@ export async function GET(request) {
       category: '',
     };
 
-    // Fetch related videos
+    // YouTube removed `relatedToVideoId`; approximate "related" with a topic search instead.
+    const topic = [snippet.title, ...(snippet.tags || []).slice(0, 2)].join(' ').slice(0, 120);
     const relatedUrl = new URL(`${BASE_URL}/search`);
     relatedUrl.searchParams.set('part', 'snippet');
     relatedUrl.searchParams.set('type', 'video');
-    relatedUrl.searchParams.set('relatedToVideoId', id);
+    relatedUrl.searchParams.set('q', topic);
     relatedUrl.searchParams.set('maxResults', '10');
     relatedUrl.searchParams.set('key', YOUTUBE_API_KEY);
     relatedUrl.searchParams.set('safeSearch', 'strict');
@@ -122,7 +132,9 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ video, related: relatedVideos });
+    const payload = { video, related: relatedVideos };
+    cacheSet(`yt-video:${id}`, payload, 30 * 60_000);
+    return NextResponse.json(payload);
   } catch (err) {
     console.error('YouTube video route error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

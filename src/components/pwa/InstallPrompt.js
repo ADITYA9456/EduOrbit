@@ -85,9 +85,9 @@ export default function InstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="install-prompt" role="dialog" aria-label="Install EduOrbite">
+    <div className="install-prompt" role="dialog" aria-label="Install EduOrbit">
       <div className="install-prompt__text">
-        <strong>Install EduOrbite</strong>
+        <strong>Install EduOrbit</strong>
         <span>Open it from your home screen, full screen, without the browser bar.</span>
       </div>
       <div className="install-prompt__actions">

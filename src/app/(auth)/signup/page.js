@@ -60,9 +60,10 @@ export default function SignupPage() {
     const errors = {};
     if (!form.fullName.trim()) errors.fullName = 'Enter your full name';
     if (!form.username.trim()) errors.username = 'Choose a username';
+    else if (!/^[a-zA-Z0-9_]{3,20}$/.test(form.username.trim())) errors.username = 'Use 3-20 letters, numbers or underscores';
     if (!form.email.trim()) errors.email = 'Enter your email address';
     if (!form.password) errors.password = 'Choose a password';
-    else if (form.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    else if (form.password.length < 8) errors.password = 'Password must be at least 8 characters';
     if (!form.confirmPassword) errors.confirmPassword = 'Confirm your password';
     else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     if (Object.keys(errors).length) return failFields(errors, EMAIL_ORDER);
@@ -70,8 +71,8 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signUp(form.email, form.password, {
-        fullName: form.fullName,
-        username: form.username,
+        full_name: form.fullName.trim(),
+        username: form.username.trim().toLowerCase(),
       });
       setSuccess('Account created! Please check your email to confirm your account.');
     } catch (err) {

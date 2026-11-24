@@ -1,51 +1,50 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-// GET /api/daily-challenge — get today's daily challenge
+export const dynamic = 'force-dynamic';
+
+// GET /api/daily-challenge: today's challenge (UTC date).
+// If none is stored yet, one is chosen deterministically from the date, so every
+// visitor sees the same problem even if the write below fails or races.
 export async function GET() {
   try {
-    const { supabase } = createServerSupabase();
+    const { supabase, supabaseAdmin } = createServerSupabase();
     const today = new Date().toISOString().split('T')[0];
 
-    // Try to get today's challenge
-    const { data: challenge } = await supabase
+    const { data: stored } = await supabase
       .from('daily_challenges')
-      .select('*, coding_problems(*)')
+      .select('question_id, coding_problems(*)')
       .eq('challenge_date', today)
-      .single();
+      .maybeSingle();
 
-    if (challenge) {
-      return NextResponse.json({ challenge: challenge.coding_problems, date: today });
+    if (stored?.coding_problems) {
+      return NextResponse.json({ challenge: stored.coding_problems, date: today });
     }
 
-    // No challenge set for today — pick a random one
-    const { data: allProblems } = await supabase
+    const { data: pool } = await supabase
       .from('coding_problems')
       .select('id')
-      .eq('type', 'code');
+      .eq('type', 'code')
+      .eq('judged', true)
+      .order('id', { ascending: true });
 
-    if (!allProblems || allProblems.length === 0) {
+    if (!pool || pool.length === 0) {
       return NextResponse.json({ challenge: null, date: today });
     }
 
-    const randomProblem = allProblems[Math.floor(Math.random() * allProblems.length)];
+    const dayNumber = Math.floor(Date.parse(`${today}T00:00:00Z`) / 86_400_000);
+    const pick = pool[dayNumber % pool.length];
 
-    // Insert as today's challenge (ignore if already exists from race condition)
-    await supabase
+    // daily_challenges is not writable with the user's own session; use the server client.
+    const { error: writeError } = await supabaseAdmin
       .from('daily_challenges')
-      .upsert(
-        { question_id: randomProblem.id, challenge_date: today },
-        { onConflict: 'challenge_date' }
-      );
+      .upsert({ question_id: pick.id, challenge_date: today }, { onConflict: 'challenge_date' });
+    if (writeError) console.error('daily-challenge write failed:', writeError.message);
 
-    const { data: problem } = await supabase
-      .from('coding_problems')
-      .select('*')
-      .eq('id', randomProblem.id)
-      .single();
-
+    const { data: problem } = await supabase.from('coding_problems').select('*').eq('id', pick.id).single();
     return NextResponse.json({ challenge: problem, date: today });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('daily-challenge failed:', err);
+    return NextResponse.json({ error: 'Could not load the daily challenge' }, { status: 500 });
   }
 }
