@@ -48,7 +48,7 @@ const DEFAULT_CODE = {
 const LANG_MONACO = { javascript: 'javascript', python: 'python', java: 'java', cpp: 'cpp', c: 'c' };
 
 const PROBLEM_COLUMNS =
-  'id,title,slug,description,difficulty,category,type,tags,starter_code,examples,constraints,mcq_options,correct_answer,points,input_format,output_format,editorial,judged,time_limit_ms,memory_limit_kb';
+  'id,title,slug,description,difficulty,category,type,tags,starter_code,examples,constraints,mcq_options,points,input_format,output_format,editorial,judged,time_limit_ms,memory_limit_kb';
 
 
 export default function ProblemPage() {
@@ -106,7 +106,7 @@ export default function ProblemPage() {
       }
       if (cancelled) return;
       if (data) {
-        const { test_cases: _legacyTests, ...safe } = data;
+        const { test_cases: _legacyTests, correct_answer: _key, ...safe } = data;
         // Editorials live in their own table so they can be withheld during a live contest.
         // Before migration 004 the table does not exist and the legacy column is used instead.
         const { data: ed } = await supabase.from('problem_editorials').select('body').eq('problem_id', data.id).maybeSingle();
@@ -338,13 +338,10 @@ export default function ProblemPage() {
     if (!user) return toast.error('Sign in to submit');
     if (!mcqAnswer) return toast.error('Select an answer');
 
-    const isCorrect = mcqAnswer === problem.correct_answer;
-    setMcqResult({ correct: isCorrect, answer: mcqAnswer, expected: problem.correct_answer });
-
-    const score = isCorrect ? (problem.points || 5) : 0;
-
+    // The server holds the answer key and decides correctness; nothing is checked in the browser.
+    let result;
     try {
-      await fetch('/api/progress', {
+      const res = await fetch('/api/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -352,12 +349,16 @@ export default function ProblemPage() {
           submittedCode: mcqAnswer,
         }),
       });
+      result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Could not save your progress');
     } catch (err) {
-      toast.error('Could not save your progress');
+      return toast.error(err.message || 'Could not save your progress');
     }
 
-    if (isCorrect) {
-      toast.success(`Correct! +${score} pts`);
+    setMcqResult({ correct: result.correct, answer: mcqAnswer, expected: result.expected });
+
+    if (result.correct) {
+      toast.success(`Correct! +${result.awarded || problem.points || 5} pts`);
       recordActivity();
     } else {
       toast.error('Incorrect answer');

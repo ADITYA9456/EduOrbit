@@ -1,4 +1,5 @@
 ﻿import { createServerSupabase } from '@/lib/supabase/server';
+import { rateLimit } from '@/lib/memory-cache';
 import { NextResponse } from 'next/server';
 
 // GET /api/progress — get user's progress stats
@@ -54,11 +55,19 @@ export async function GET(request) {
 // Correctness and score are decided here from the stored answer; nothing is trusted from the client.
 export async function POST(request) {
   try {
-    const { supabase } = createServerSupabase();
+    const { supabase, supabaseAdmin: admin } = createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: account } = await admin.from('profiles').select('banned').eq('id', user.id).maybeSingle();
+    if (account?.banned) return NextResponse.json({ error: 'This account has been suspended.' }, { status: 403 });
+
+    const limit = rateLimit(`progress:${user.id}`, 30, 60_000);
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many answers. Wait a moment.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
     }
 
     let body;
@@ -77,7 +86,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'An answer is required' }, { status: 400 });
     }
 
-    const { data: problem } = await supabase
+    const { data: problem } = await admin
       .from('coding_problems')
       .select('id, type, correct_answer, points')
       .eq('id', questionId)
@@ -90,10 +99,17 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Code problems are graded through the judge' }, { status: 400 });
     }
 
-    const correct = answer === problem.correct_answer;
+    // The answer key lives in problem_answers (migration 005). Before it, the legacy column holds the key.
+    const { data: keyRow } = await admin.from('problem_answers').select('correct_answer').eq('problem_id', questionId).maybeSingle();
+    const expected = keyRow?.correct_answer || problem.correct_answer || '';
+    if (!expected) {
+      return NextResponse.json({ error: 'This question has no answer key yet' }, { status: 409 });
+    }
+
+    const correct = answer === expected;
     const awarded = correct ? problem.points || 0 : 0;
 
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('user_progress')
       .select('id, status, score, attempts')
       .eq('user_id', user.id)
@@ -109,9 +125,10 @@ export async function POST(request) {
       updated_at: new Date().toISOString(),
     };
 
+    // Written with the service role: clients cannot write user_progress themselves (migration 005).
     const query = existing
-      ? supabase.from('user_progress').update(row).eq('id', existing.id)
-      : supabase.from('user_progress').insert({ ...row, user_id: user.id, question_id: questionId });
+      ? admin.from('user_progress').update(row).eq('id', existing.id).eq('user_id', user.id)
+      : admin.from('user_progress').insert({ ...row, user_id: user.id, question_id: questionId });
     const { data: saved, error } = await query.select().single();
 
     if (error) {
@@ -119,7 +136,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Could not save your progress' }, { status: 500 });
     }
 
-    return NextResponse.json({ progress: saved, correct, awarded });
+    return NextResponse.json({ progress: saved, correct, awarded, expected });
   } catch (err) {
     console.error('POST /api/progress failed:', err);
     return NextResponse.json({ error: 'Could not save your progress' }, { status: 500 });

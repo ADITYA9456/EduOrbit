@@ -3,6 +3,13 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+// Never send answer keys, legacy test cases or editorials to the browser.
+const publicProblem = (p) => {
+  if (!p) return p;
+  const { correct_answer: _a, test_cases: _t, editorial: _e, ...rest } = p;
+  return rest;
+};
+
 // GET /api/daily-challenge: today's challenge (UTC date).
 // If none is stored yet, one is chosen deterministically from the date, so every
 // visitor sees the same problem even if the write below fails or races.
@@ -18,7 +25,7 @@ export async function GET() {
       .maybeSingle();
 
     if (stored?.coding_problems) {
-      return NextResponse.json({ challenge: stored.coding_problems, date: today });
+      return NextResponse.json({ challenge: publicProblem(stored.coding_problems), date: today });
     }
 
     const { data: pool } = await supabase
@@ -42,7 +49,7 @@ export async function GET() {
     if (writeError) console.error('daily-challenge write failed:', writeError.message);
 
     const { data: problem } = await supabase.from('coding_problems').select('*').eq('id', pick.id).single();
-    return NextResponse.json({ challenge: problem, date: today });
+    return NextResponse.json({ challenge: publicProblem(problem), date: today });
   } catch (err) {
     console.error('daily-challenge failed:', err);
     return NextResponse.json({ error: 'Could not load the daily challenge' }, { status: 500 });

@@ -1,3 +1,7 @@
+import { requireAdmin } from '@/lib/admin-auth';
+import { logAdminAction } from '@/lib/audit';
+import { clientIp, rateLimit } from '@/lib/memory-cache';
+import { safeEqual } from '@/lib/safe-equal';
 import { NextResponse } from 'next/server';
 
 // IMPORTANT
@@ -53,35 +57,22 @@ function clampInt(value, { min, max, fallback }) {
   return Math.min(Math.max(n, min), max);
 }
 
-async function isAuthorized(request) {
+// Returns { actor } when authorised (actor is the admin's user id, or 'sync-secret'), else null.
+async function authorize(request) {
   // Option A (recommended): protect with a shared secret header for Cron/manual use.
   const secret = process.env.LEETCODE_SYNC_SECRET;
   if (secret) {
     const provided = request.headers.get('x-sync-secret');
-    if (provided && provided === secret) return true;
+    if (provided && safeEqual(provided, secret)) return { actor: 'sync-secret' };
   }
 
-  // Option B: allow signed-in admins to trigger sync.
-  // Reads Supabase session from cookies (SSR auth).
+  // Option B: allow signed-in admins to trigger sync (same server-side gate as /api/admin/*).
   try {
-    const { createServerSupabase } = await import('@/lib/supabase/server');
-    const { supabase } = createServerSupabase();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return false;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    return profile?.role === 'admin';
+    const gate = await requireAdmin();
+    if (gate.response) return null;
+    return { actor: gate.user.id };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -209,8 +200,14 @@ export async function POST(request) {
       );
     }
 
-    const allowed = await isAuthorized(request);
-    if (!allowed) {
+    // Limit guessing of the shared secret and accidental loops.
+    const attempts = rateLimit(`sync-leetcode:${clientIp(request)}`, 30, 60_000);
+    if (!attempts.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(attempts.retryAfter) } });
+    }
+
+    const auth = await authorize(request);
+    if (!auth) {
       return NextResponse.json(
         {
           error:
@@ -252,9 +249,10 @@ export async function POST(request) {
     // 1) Fetch from LeetCode
     const page = await fetchLeetCodePage({ skip, limit });
     if (!page.ok) {
+      console.error('sync-leetcode upstream failure:', page.status, page.error);
       return NextResponse.json(
-        { error: page.error, status: page.status, raw: page.raw },
-        { status: page.status || 502 }
+        { error: 'LeetCode did not return usable data. Try again later.', status: page.status },
+        { status: 502 }
       );
     }
 
@@ -275,12 +273,11 @@ export async function POST(request) {
         .upsert(chunk, { onConflict: 'source,slug' });
 
       if (error) {
-        return NextResponse.json(
-          { error: `Supabase upsert failed: ${error.message}` },
-          { status: 500 }
-        );
+        console.error('sync-leetcode upsert failed:', error.message);
+        return NextResponse.json({ error: 'Could not save the synced questions' }, { status: 500 });
       }
     }
+    await logAdminAction(supabaseAdmin, auth.actor === 'sync-secret' ? null : auth.actor, 'leetcode.sync', 'questions', null, { skip, limit, synced: rows.length, via: auth.actor === 'sync-secret' ? 'secret' : 'admin' });
 
     const nextSkip = skip + limit;
     const done = page.hasMore === null ? rows.length < limit : !page.hasMore;
@@ -296,9 +293,7 @@ export async function POST(request) {
       done,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err?.message || 'Internal error' },
-      { status: 500 }
-    );
+    console.error('sync-leetcode failed:', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

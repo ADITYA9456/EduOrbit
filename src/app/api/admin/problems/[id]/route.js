@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/admin-auth';
+import { logAdminAction } from '@/lib/audit';
 import { parseProblemInput } from '@/lib/problem-input';
 import { NextResponse } from 'next/server';
 
@@ -71,6 +72,7 @@ export async function PUT(request, { params }) {
   if (edError && /does not exist|schema cache/i.test(edError.message)) {
     await admin.from('coding_problems').update({ editorial: parsed.editorial }).eq('id', params.id);
   }
+  await logAdminAction(admin, gate.user.id, 'problem.update', 'problem', params.id, { slug: parsed.problem.slug, tests: rows.length });
   return NextResponse.json({ ok: true, slug: parsed.problem.slug });
 }
 
@@ -84,5 +86,6 @@ export async function DELETE(_request, { params }) {
     console.error('admin problem delete failed:', error.message);
     return NextResponse.json({ error: 'Could not delete the problem' }, { status: 500 });
   }
+  await logAdminAction(gate.admin, gate.user.id, 'problem.delete', 'problem', params.id);
   return NextResponse.json({ ok: true });
 }

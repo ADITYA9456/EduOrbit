@@ -1,8 +1,10 @@
 import { createServerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/bookmarks — get user's bookmarks
-export async function GET(request) {
+export async function GET() {
   try {
     const { supabase } = createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -18,12 +20,14 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('GET /api/bookmarks failed:', error.message);
+      return NextResponse.json({ error: 'Could not load bookmarks' }, { status: 500 });
     }
 
     return NextResponse.json({ bookmarks: bookmarks || [] });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('GET /api/bookmarks failed:', err);
+    return NextResponse.json({ error: 'Could not load bookmarks' }, { status: 500 });
   }
 }
 
@@ -37,37 +41,43 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { questionId } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const questionId = body?.questionId;
 
-    if (!questionId) {
-      return NextResponse.json({ error: 'questionId is required' }, { status: 400 });
+    if (typeof questionId !== 'string' || !UUID.test(questionId)) {
+      return NextResponse.json({ error: 'A valid questionId is required' }, { status: 400 });
     }
 
-    // Check if already bookmarked
+    // Check if already bookmarked (RLS limits every query here to the caller's own rows)
     const { data: existing } = await supabase
       .from('bookmarks')
       .select('id')
       .eq('user_id', user.id)
       .eq('question_id', questionId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      // Remove bookmark
-      await supabase
-        .from('bookmarks')
-        .delete()
-        .eq('id', existing.id);
-
+      const { error } = await supabase.from('bookmarks').delete().eq('id', existing.id).eq('user_id', user.id);
+      if (error) {
+        console.error('bookmark delete failed:', error.message);
+        return NextResponse.json({ error: 'Could not update the bookmark' }, { status: 500 });
+      }
       return NextResponse.json({ bookmarked: false });
-    } else {
-      // Add bookmark
-      await supabase
-        .from('bookmarks')
-        .insert({ user_id: user.id, question_id: questionId });
-
-      return NextResponse.json({ bookmarked: true });
     }
+
+    const { error } = await supabase.from('bookmarks').insert({ user_id: user.id, question_id: questionId });
+    if (error) {
+      console.error('bookmark insert failed:', error.message);
+      return NextResponse.json({ error: 'Could not update the bookmark' }, { status: 500 });
+    }
+    return NextResponse.json({ bookmarked: true });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('POST /api/bookmarks failed:', err);
+    return NextResponse.json({ error: 'Could not update the bookmark' }, { status: 500 });
   }
 }

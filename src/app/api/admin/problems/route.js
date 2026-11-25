@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/admin-auth';
+import { logAdminAction } from '@/lib/audit';
 import { parseProblemInput } from '@/lib/problem-input';
 import { NextResponse } from 'next/server';
 
@@ -81,5 +82,6 @@ export async function POST(request) {
     console.error('editorial save failed:', err.message);
   }
   await admin.from('coding_problems').update({ judged: true }).eq('id', created.id);
+  await logAdminAction(admin, gate.user.id, 'problem.create', 'problem', created.id, { slug: created.slug, tests: rows.length });
   return NextResponse.json({ id: created.id, slug: created.slug }, { status: 201 });
 }

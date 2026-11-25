@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { buildInsights, dailyTotals, safeTimeZone } from '../src/lib/learning.js';
 import { parseProblemInput, slugify } from '../src/lib/problem-input.js';
 import { safeRedirectPath } from '../src/lib/safe-redirect.js';
+import { safeEqual } from '../src/lib/safe-equal.js';
+import { parseQuestionBody } from '../src/lib/question-input.js';
 import { cacheGet, cacheSet, rateLimit } from '../src/lib/memory-cache.js';
 
 let failed = 0;
@@ -143,6 +145,40 @@ test('dailyTotals: buckets completed sessions by local day, oldest first', () =>
 test('safeTimeZone: falls back to UTC for junk', () => {
   assert.equal(safeTimeZone('Asia/Kolkata'), 'Asia/Kolkata');
   assert.equal(safeTimeZone('Not/AZone'), 'UTC');
+});
+
+// ---- security helpers
+test('safeEqual: equal, different, different length, non-strings', () => {
+  assert.equal(safeEqual('s3cret-value', 's3cret-value'), true);
+  assert.equal(safeEqual('s3cret-value', 's3cret-valuf'), false);
+  assert.equal(safeEqual('short', 'a-much-longer-value'), false);
+  assert.equal(safeEqual(undefined, 'x'), false);
+  assert.equal(safeEqual('x', null), false);
+  assert.equal(safeEqual('', ''), true);
+});
+test('parseQuestionBody: ignores fields outside the allow-list (no mass assignment)', () => {
+  const r = parseQuestionBody({
+    title: 'T', description: 'D', role: 'admin', id: 'x', judged: true, created_at: '2000-01-01', order_index: 3,
+    test_cases: [{ input: 'secret' }], editorial: 'leak', correct_answer: 'B',
+  });
+  assert.equal(r.errors, null);
+  for (const k of ['role', 'id', 'judged', 'created_at', 'test_cases', 'editorial', 'correct_answer']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(r.fields, k), false, k);
+  }
+  assert.equal(r.fields.order_index, 3);
+  assert.equal(r.answer, 'B');
+});
+test('parseQuestionBody: validates enums and numbers', () => {
+  assert.ok(parseQuestionBody({ title: 'T', description: 'D', difficulty: 'Nightmare' }).errors?.difficulty);
+  assert.ok(parseQuestionBody({ title: 'T', description: 'D', type: 'shell' }).errors?.type);
+  assert.equal(parseQuestionBody({ title: 'T', description: 'D', points: 'abc' }).fields.points, 10);
+  assert.equal(parseQuestionBody({ title: 'T', description: 'D', points: 1e9 }).fields.points, 10);
+  assert.ok(parseQuestionBody({ description: 'D' }).errors?.title);
+});
+test('parseQuestionBody: partial updates only touch supplied fields', () => {
+  const r = parseQuestionBody({ points: 20 }, { partial: true });
+  assert.deepEqual(Object.keys(r.fields), ['points']);
+  assert.equal(r.answer, undefined);
 });
 
 console.log(failed === 0 ? '\nAll library checks passed.' : `\n${failed} library check(s) FAILED.`);

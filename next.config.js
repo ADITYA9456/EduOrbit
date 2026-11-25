@@ -14,10 +14,12 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
 ].join('; ');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.ytimg.com' },
@@ -46,8 +48,15 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
         ],
+      },
+      // API responses are per-user or already dynamic: never let a browser or proxy cache them.
+      {
+        source: '/api/(.*)',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
       },
     ];
   },

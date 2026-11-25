@@ -1,9 +1,10 @@
 # Deploying EduOrbit
 
 ## 1. Database (Supabase)
-Existing project: run, in the SQL editor and in order, `supabase/migrations/001` to `004`, then the seed files in `supabase/seed/` (`01`, `02`, `04`, `05`, ...). Every file is safe to re-run.
+Existing project: run, in the SQL editor and in order, `supabase/migrations/001` to `005`, then the seed files in `supabase/seed/` (`01`, `02`, `04`, `05`, ...). Every file is safe to re-run.
 New empty project only: run `supabase/database-schema.sql` first (it refuses to run if users exist), then the same files.
 Migration 004 must be applied before the seeds, because the seeds write editorials to `problem_editorials`.
+Migration 005 is the security hardening pass (see `SECURITY_FIXES.md`). Deploy the app code first, then run 005: the code works both before and after it. 005 moves MCQ answer keys to a private table (copied first, never deleted), closes direct client writes to `videos` status and `user_progress`, and stops anonymous reads of `profiles`. Rollback: `supabase/rollbacks/005_security_hardening_2.rollback.sql`. Take a backup first (section 5) and smoke-test sign-in, the leaderboard, a video upload and the admin page afterwards.
 After a migration, the app cache refreshes itself (`NOTIFY pgrst`).
 Give an account admin rights: `node scripts/make-admin.mjs you@example.com` (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`).
 Auth settings: add your site URL and `<site>/api/auth/callback` under Authentication > URL Configuration (password reset and Google sign-in depend on it). Enable the Google provider for Google sign-in and an SMS provider for phone sign-in.

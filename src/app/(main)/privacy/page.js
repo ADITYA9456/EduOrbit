@@ -39,10 +39,10 @@ export default function PrivacyPage() {
         <p>We use cookies only to keep you signed in. We store your theme choice and code-editor preferences in your browser. We do not use advertising or cross-site tracking cookies.</p>
       </Section>
       <Section title="6. How long we keep it">
-        <p>We keep account data while your account exists. Contact messages are kept until handled and for a reasonable period afterwards. When you ask us to delete your account, we delete your profile and the data linked to it, except where we must keep something by law or for security.</p>
+        <p>We keep account data while your account exists. Contact messages are kept until handled and for a reasonable period afterwards. When you delete your account, we delete your profile and the data linked to it, including your contact messages, except where we must keep something by law or for security (for example a record that an account was deleted, and videos or reports you filed, which stay without a link to you).</p>
       </Section>
       <Section title="7. Your choices">
-        <p>You can ask to see, correct, export or delete your personal data, or withdraw consent, through the <Link href="/contact">contact page</Link>. You can edit most profile details yourself on the Profile page.</p>
+        <p>On your <Link href="/profile">Profile page</Link> you can edit your profile details, download a copy of your personal data, and permanently delete your account. For anything else, such as correcting data you cannot edit, asking questions about your data, withdrawing consent or raising a complaint, use the <Link href="/contact">contact page</Link>.</p>
       </Section>
       <Section title="8. Security">
         <p>Data is sent over HTTPS, access to it is limited by database rules, and secrets are kept on the server. No system is perfectly secure, so please use a strong, unique password.</p>

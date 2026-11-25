@@ -256,6 +256,9 @@ export default function SignupPage() {
             )}
           </>
         )}
+        <p className="text-sm text-muted" style={{ textAlign: 'center', margin: 'var(--space-md) var(--space-lg) 0' }}>
+          By creating an account you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.
+        </p>
         <div className="auth-card__footer">
           Already have an account?{' '}
           <Link href="/login">Sign In</Link>

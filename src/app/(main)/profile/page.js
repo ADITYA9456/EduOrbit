@@ -37,6 +37,10 @@ export default function ProfilePage() {
   const [solvedByDifficulty, setSolvedByDifficulty] = useState({ Easy: 0, Medium: 0, Hard: 0 });
   const [contestHistory, setContestHistory] = useState([]);
   const [contestsLoading, setContestsLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -160,6 +164,41 @@ export default function ProfilePage() {
       toast.error(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/account/export');
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not export your data');
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'eduorbit-my-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: deleteConfirm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not delete your account');
+      window.location.href = '/api/auth/signout';
+    } catch (err) {
+      toast.error(err.message);
+      setDeleting(false);
     }
   };
 
@@ -391,6 +430,51 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Data and privacy */}
+      <section className="card" aria-labelledby="privacy-title" style={{ marginTop: 'var(--space-xl)' }}>
+        <h2 id="privacy-title" className="profile-section-title">Your data</h2>
+        <p className="text-sm text-muted">
+          Download a copy of the personal data we hold about you, or delete your account permanently.
+          See the <Link href="/privacy">Privacy Policy</Link>.
+        </p>
+        <div className="flex gap-sm" style={{ marginTop: 'var(--space-md)', flexWrap: 'wrap' }}>
+          <button className="btn btn--ghost btn--sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Preparing...' : 'Download my data'}
+          </button>
+          {!deleteOpen && (
+            <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteOpen(true)}>
+              Delete my account
+            </button>
+          )}
+        </div>
+        {deleteOpen && (
+          <div style={{ marginTop: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            <p className="text-sm">
+              This permanently deletes your profile, submissions, progress and study data. It cannot be undone.
+              Type <strong>DELETE</strong> to confirm.
+            </p>
+            <input
+              className="input"
+              aria-label="Type DELETE to confirm"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              autoComplete="off"
+            />
+            <div className="flex gap-sm">
+              <button
+                className="btn btn--sm"
+                style={{ background: 'var(--danger)', color: '#fff' }}
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirm !== 'DELETE' || deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete permanently'}
+              </button>
+              <button className="btn btn--ghost btn--sm" onClick={() => { setDeleteOpen(false); setDeleteConfirm(''); }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
